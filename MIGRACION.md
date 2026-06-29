@@ -1,39 +1,65 @@
-# Migración desde JudgmentOfTheFallenWing
+# Artemisa — publicar código en GitHub
 
-Este proyecto vivía en el repositorio `JudgmentOfTheFallenWing` (PR #5).  
-Ahora es un **repositorio independiente**: `artemisa`.
+Repositorio oficial: **https://github.com/richardrojascid/artemisa**
 
-## Si aún no existe el repo en GitHub
+El código completo está en la rama exportada:
 
-1. Entra a https://github.com/new  
-2. Nombre del repositorio: **`artemisa`**  
-3. Público o privado, **sin** README ni .gitignore (vacío)  
-4. Clic en **Create repository**
+**https://github.com/richardrojascid/JudgmentOfTheFallenWing/tree/artemisa**
 
-## Subir este código a `richardrojascid/artemisa`
+---
 
-En tu PC, después de clonar o con esta carpeta:
+## Opción A — Desde tu PC con Git (recomendada)
 
-```bash
-git remote add artemisa https://github.com/richardrojascid/artemisa.git
-git branch -M main
-git push -u artemisa main
+Abre **CMD** o **PowerShell** y ejecuta (te pedirá usuario/contraseña o token de GitHub):
+
+```cmd
+git clone https://github.com/richardrojascid/artemisa.git
+cd artemisa
+git remote add export https://github.com/richardrojascid/JudgmentOfTheFallenWing.git
+git fetch export artemisa
+git checkout -B main export/artemisa
+git push -u origin main --force
 ```
 
-## Descargar sin clonar todo JudgmentOfTheFallenWing
+Si prefieres usar la rama `develop` que ya creaste:
 
-**Opción A** — Rama exportada (mientras migras):
+```cmd
+git clone https://github.com/richardrojascid/artemisa.git
+cd artemisa
+git remote add export https://github.com/richardrojascid/JudgmentOfTheFallenWing.git
+git fetch export artemisa
+git checkout develop
+git merge export/artemisa --allow-unrelated-histories -m "Importar sistema de comandas Artemisa"
+git push origin develop
+```
 
-https://github.com/richardrojascid/JudgmentOfTheFallenWing/tree/artemisa
+Luego en GitHub → **Settings** → **General** → pon `main` o `develop` como rama por defecto.
 
-ZIP: https://github.com/richardrojascid/JudgmentOfTheFallenWing/archive/refs/heads/artemisa.zip
+---
 
-**Opción B** — Repo definitivo (cuando exista):
+## Opción B — Descargar ZIP y subir manualmente
 
-https://github.com/richardrojascid/artemisa
+1. Descarga: https://github.com/richardrojascid/JudgmentOfTheFallenWing/archive/refs/heads/artemisa.zip  
+2. Descomprime  
+3. En la carpeta, abre terminal:
+
+```cmd
+git init
+git remote add origin https://github.com/richardrojascid/artemisa.git
+git add .
+git commit -m "Sistema de comandas Artemisa Salón de Té"
+git branch -M main
+git push -u origin main --force
+```
+
+---
+
+## Verificar
+
+Abre https://github.com/richardrojascid/artemisa — debes ver carpetas `admin`, `api`, `assets`, `includes`, `index.php`, etc.
+
+---
 
 ## Cerrar el PR antiguo
 
-En JudgmentOfTheFallenWing, cierra el **Pull Request #5** con un comentario:
-
-> Código migrado al repositorio `artemisa`. Este PR ya no aplica.
+https://github.com/richardrojascid/JudgmentOfTheFallenWing/pull/5 → **Close pull request** (no merge).

@@ -1,8 +1,8 @@
 # Artemisa Salón de Té — Sistema de comandas para meseros
 
-Repositorio oficial del sistema de comandas para **Artemisa Salón de Té**.
+**Repositorio:** https://github.com/richardrojascid/artemisa
 
-Aplicación web responsiva para que los meseros tomen pedidos desde celular Android o tablet, con la **carta 2026**, personalización de productos, propina flexible, reportes por correo e impresión en impresora térmica.
+Sistema de comandas para **Artemisa Salón de Té**: carta 2026, PIN, propina flexible, reportes por correo e impresión térmica. Compatible con Hostgator (PHP + SQLite + HTTPS).
 
 ## Características
 

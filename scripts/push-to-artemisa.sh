@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# Ejecutar DESPUÉS de crear el repo vacío en GitHub: richardrojascid/artemisa
+# Importa el código desde JudgmentOfTheFallenWing/artemisa → richardrojascid/artemisa
 set -euo pipefail
-cd "$(dirname "$0")/.."
 
-git remote remove artemisa 2>/dev/null || true
-git remote add artemisa https://github.com/richardrojascid/artemisa.git
+TARGET="${1:-../artemisa}"
 
-git branch -M main
-git push -u artemisa main
+if [[ ! -d "$TARGET/.git" ]]; then
+  git clone https://github.com/richardrojascid/artemisa.git "$TARGET"
+fi
+
+cd "$TARGET"
+git remote remove export 2>/dev/null || true
+git remote add export https://github.com/richardrojascid/JudgmentOfTheFallenWing.git
+git fetch export artemisa
+git checkout -B main export/artemisa
+git push -u origin main --force
 
 echo ""
 echo "Listo: https://github.com/richardrojascid/artemisa"
