@@ -1,0 +1,16 @@
+*
+!.gitkeep
+!reports/.gitkeep
+
+# Base de datos local (se crea al instalar)
+*.db
+*.sqlite
+*.sqlite3
+
+# Reportes generados
+data/reports/*
+!data/reports/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db
