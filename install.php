@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/Database.php';
+require_once __DIR__ . '/includes/branding.php';
 
 $message = '';
 $error = '';
@@ -34,10 +35,12 @@ $installed = file_exists(DB_PATH);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instalación — <?= htmlspecialchars(APP_NAME) ?></title>
+    <link rel="icon" type="image/png" href="<?= BRAND_LOGO_CIRCULAR ?>">
     <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body class="install-page">
     <main class="install-card">
+        <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="<?= htmlspecialchars(APP_NAME) ?>" class="install-logo">
         <h1>Instalación</h1>
         <p>Configura <strong><?= htmlspecialchars(APP_NAME) ?></strong> con la carta 2026 y un PIN de acceso para el personal.</p>
 

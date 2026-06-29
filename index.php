@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/Database.php';
 require_once __DIR__ . '/includes/Settings.php';
 require_once __DIR__ . '/includes/Auth.php';
+require_once __DIR__ . '/includes/branding.php';
 
 if (!file_exists(DB_PATH)) {
     header('Location: install.php');
@@ -26,14 +27,17 @@ $cafeName = $settings->getCafeName();
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title><?= htmlspecialchars($cafeName) ?> — Mesero</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a1628' width='100' height='100' rx='12'/><circle cx='50' cy='40' r='18' fill='%23c9a227'/><rect x='42' y='55' width='16' height='22' rx='3' fill='%23f5ebe0'/></svg>">
+    <link rel="icon" type="image/png" href="<?= BRAND_LOGO_CIRCULAR ?>">
+    <link rel="apple-touch-icon" href="<?= BRAND_LOGO_CIRCULAR ?>">
     <link rel="stylesheet" href="assets/css/app.css">
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
     <header class="app-header">
         <div class="header-top">
-            <h1><?= htmlspecialchars($cafeName) ?></h1>
+            <div class="header-brand">
+                <img src="<?= BRAND_LOGO_BANNER ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="header-logo-banner">
+            </div>
             <div class="header-actions">
                 <a href="admin/" class="btn-icon" title="Administración">📋</a>
                 <button type="button" class="btn-icon" id="btnSettings" aria-label="Configuración">⚙️</button>

@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/Database.php';
 require_once __DIR__ . '/includes/Settings.php';
 require_once __DIR__ . '/includes/Auth.php';
+require_once __DIR__ . '/includes/branding.php';
 
 Auth::startSession();
 
@@ -44,14 +45,15 @@ $cafeName = $settings->getCafeName();
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a1628">
     <title>Acceso — <?= htmlspecialchars($cafeName) ?></title>
+    <link rel="icon" type="image/png" href="<?= BRAND_LOGO_CIRCULAR ?>">
+    <link rel="apple-touch-icon" href="<?= BRAND_LOGO_CIRCULAR ?>">
     <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body class="login-page">
     <main class="login-card">
         <div class="login-brand">
-            <img src="assets/images/logo-artemisa.svg" alt="<?= htmlspecialchars($cafeName) ?>" class="login-logo" width="220" height="110">
-            <h1><?= htmlspecialchars($cafeName) ?></h1>
-            <p>Acceso para personal</p>
+            <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="login-logo-circular" width="200" height="200">
+            <p class="login-subtitle">Acceso para personal</p>
         </div>
 
         <?php if ($error): ?>

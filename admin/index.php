@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/includes/config.php';
 require_once dirname(__DIR__) . '/includes/Database.php';
 require_once dirname(__DIR__) . '/includes/Settings.php';
 require_once dirname(__DIR__) . '/includes/Auth.php';
+require_once dirname(__DIR__) . '/includes/branding.php';
 
 if (!file_exists(DB_PATH)) {
     header('Location: ../install.php');
@@ -24,13 +25,14 @@ $cafeName = $settings->getCafeName();
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a1628">
     <title>Administración — <?= htmlspecialchars($cafeName) ?></title>
+    <link rel="icon" type="image/png" href="<?= brand_path(BRAND_LOGO_CIRCULAR, '..') ?>">
     <link rel="stylesheet" href="../assets/css/app.css">
 </head>
 <body class="admin-page">
     <header class="admin-header">
-        <div>
-            <h1>Administración</h1>
-            <p><?= htmlspecialchars($cafeName) ?></p>
+        <div class="admin-header-brand">
+            <img src="<?= brand_path(BRAND_LOGO_BANNER, '..') ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="header-logo-banner">
+            <p class="admin-header-sub">Panel de administración</p>
         </div>
         <div class="header-actions">
             <a href="../index.php" class="btn btn-secondary btn-sm">Volver a comandas</a>
