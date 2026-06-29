@@ -567,6 +567,7 @@ body {
     border: 1px solid var(--color-border);
     border-radius: 999px;
     background: var(--color-surface-2);
+    color: var(--color-text);
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.15s;
@@ -582,12 +583,18 @@ body {
 .chip.extra-selected {
     background: var(--color-success);
     border-color: var(--color-success);
-    color: white;
+    color: #0a1628;
+}
+
+.chip.extra-selected .chip-price {
+    color: #0a1628;
+    opacity: 0.85;
 }
 
 .chip .chip-price {
     font-size: 0.75rem;
-    opacity: 0.85;
+    color: var(--color-text-muted);
+    opacity: 0.95;
 }
 
 .modal-total {
