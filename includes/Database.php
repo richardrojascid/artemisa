@@ -130,5 +130,8 @@ class Database
         if (!in_array('include_tip', $orderColumnNames, true)) {
             $db->exec('ALTER TABLE orders ADD COLUMN include_tip INTEGER NOT NULL DEFAULT 1');
         }
+
+        $db->exec("UPDATE categories SET name = 'Salados' WHERE name = 'Saladas'");
+        $db->exec("UPDATE categories SET name = 'Helados' WHERE name = 'Heladas'");
     }
 }

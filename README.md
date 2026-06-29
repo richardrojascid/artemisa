@@ -46,9 +46,9 @@ Accede a `https://tudominio.com/admin/` (requiere PIN):
 |-----------|-----------|
 | Cafés | 15 variedades con precio simple/doble |
 | Variedades de té | 14 opciones + variantes de hojas |
-| Saladas | Tostadas, planchado, pailas, pizza untable, etc. |
+| Salados | Tostadas, planchado, pailas, pizza untable, etc. |
 | Pastelería | Waffles, croissants, brownies, donuts, etc. |
-| Heladas | Copas, milkshake, frappuccino + extras |
+| Helados | Copas, milkshake, frappuccino + extras |
 | Bebidas frías | Iced coffee, limonada, jugos, etc. |
 
 ## Impresora térmica

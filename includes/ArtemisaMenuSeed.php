@@ -36,9 +36,9 @@ class ArtemisaMenuSeed
         $categories = [
             ['Cafés', 1],
             ['Variedades de té', 2],
-            ['Saladas', 3],
+            ['Salados', 3],
             ['Pastelería', 4],
-            ['Heladas', 5],
+            ['Helados', 5],
             ['Bebidas frías', 6],
         ];
 
