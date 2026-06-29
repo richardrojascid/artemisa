@@ -1,0 +1,11 @@
+{
+    "name": "Artemisa Salón de Té",
+    "short_name": "Artemisa",
+    "description": "Sistema de comandas para meseros",
+    "start_url": "/index.php",
+    "display": "standalone",
+    "background_color": "#0a1628",
+    "theme_color": "#0a1628",
+    "orientation": "portrait-primary",
+    "lang": "es"
+}
