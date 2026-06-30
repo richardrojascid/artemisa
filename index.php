@@ -32,10 +32,13 @@ $cafeName = $settings->getCafeName();
     <link rel="stylesheet" href="assets/css/app.css">
     <link rel="manifest" href="manifest.json">
 </head>
-<body>
+<body class="mesero-page">
     <header class="app-header">
         <div class="header-top">
             <div class="header-brand">
+                <div class="header-logo-box" aria-hidden="true">
+                    <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="header-logo-circular">
+                </div>
                 <img src="<?= BRAND_LOGO_BANNER ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="header-logo-banner">
             </div>
             <div class="header-actions">
@@ -69,10 +72,13 @@ $cafeName = $settings->getCafeName();
         <div class="cart-content" id="cartContent">
             <div class="cart-header">
                 <h2>Pedido actual</h2>
-                <button type="button" class="btn-icon" id="closeCart" aria-label="Cerrar">✕</button>
+                <button type="button" class="btn-icon cart-close-mobile" id="closeCart" aria-label="Cerrar">✕</button>
             </div>
-            <ul class="cart-items" id="cartItems"></ul>
-            <div class="cart-summary">
+            <div class="cart-items-wrap">
+                <ul class="cart-items" id="cartItems"></ul>
+            </div>
+            <div class="cart-footer">
+                <div class="cart-summary">
                 <div class="summary-row">
                     <span>Subtotal productos</span>
                     <span id="cartSubtotal">$0</span>
@@ -93,10 +99,11 @@ $cafeName = $settings->getCafeName();
                     <span>Total con propina</span>
                     <span id="cartTotal">$0</span>
                 </div>
-            </div>
-            <div class="cart-actions">
-                <button type="button" class="btn btn-secondary" id="btnClearCart">Vaciar</button>
-                <button type="button" class="btn btn-primary" id="btnSendOrder">Enviar comanda</button>
+                </div>
+                <div class="cart-actions">
+                    <button type="button" class="btn btn-secondary" id="btnClearCart">Vaciar</button>
+                    <button type="button" class="btn btn-primary" id="btnSendOrder">Enviar comanda</button>
+                </div>
             </div>
         </div>
     </aside>
