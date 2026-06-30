@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('APP_NAME', 'Artemisa Salón de Té');
-define('APP_VERSION', '1.1.0');
+define('APP_VERSION', '1.1.1');
 define('BASE_PATH', dirname(__DIR__));
 define('DATA_PATH', BASE_PATH . '/data');
 define('DB_PATH', DATA_PATH . '/cafe.db');

@@ -29,7 +29,7 @@ $cafeName = $settings->getCafeName();
     <title><?= htmlspecialchars($cafeName) ?> — Mesero</title>
     <link rel="icon" type="image/png" href="<?= BRAND_LOGO_CIRCULAR ?>">
     <link rel="apple-touch-icon" href="<?= BRAND_LOGO_CIRCULAR ?>">
-    <link rel="stylesheet" href="assets/css/app.css">
+    <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>">
     <link rel="manifest" href="manifest.json">
 </head>
 <body class="mesero-page">
@@ -193,6 +193,6 @@ $cafeName = $settings->getCafeName();
         window.APP_TIP_PERCENT = <?= json_encode($settings->getTipPercent()) ?>;
     </script>
     <script src="assets/js/printer.js"></script>
-    <script src="assets/js/app.js"></script>
+    <script src="<?= asset_url('assets/js/app.js') ?>"></script>
 </body>
 </html>
