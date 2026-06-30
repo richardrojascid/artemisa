@@ -175,9 +175,12 @@
                 tipPercent = data.tip_percent;
                 if (els.tipPercentLabel) els.tipPercentLabel.textContent = tipPercent;
             }
+            if (menu.length > 0) {
+                const defaultCategory = menu.find(c => c.name === 'Cafés') ?? menu[0];
+                selectedCategoryId = defaultCategory.id;
+            }
             renderCategoryTabs();
             if (menu.length > 0) {
-                selectedCategoryId = menu[0].id;
                 renderMenu();
             }
         } catch (err) {
@@ -188,7 +191,8 @@
     function renderCategoryTabs() {
         els.categoryTabs.innerHTML = menu.map(cat => `
             <button type="button" class="tab-btn ${cat.id === selectedCategoryId ? 'active' : ''}"
-                    data-category="${cat.id}" role="tab">
+                    data-category="${cat.id}" role="tab"
+                    aria-selected="${cat.id === selectedCategoryId}">
                 ${escapeHtml(cat.name)}
             </button>
         `).join('');
