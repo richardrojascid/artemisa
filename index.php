@@ -49,7 +49,6 @@ $cafeName = $settings->getCafeName();
             </div>
         </div>
         <div class="order-session-bar" id="orderSessionBar" hidden>
-            <select id="sessionSwitcher" class="session-switcher" aria-label="Seleccionar sesión"></select>
             <p class="order-session-summary" id="orderSessionSummary"></p>
             <button type="button" class="btn btn-secondary btn-sm" id="btnNewSession">Nueva</button>
             <button type="button" class="btn btn-secondary btn-sm" id="btnEditSession">Editar</button>

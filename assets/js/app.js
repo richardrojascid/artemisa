@@ -79,7 +79,6 @@
         orderSessionSummary: $('#orderSessionSummary'),
         btnEditSession: $('#btnEditSession'),
         btnNewSession: $('#btnNewSession'),
-        sessionSwitcher: $('#sessionSwitcher'),
         sessionClientName: $('#sessionClientName'),
         btnReprintOrders: $('#btnReprintOrders'),
         reprintModal: $('#reprintModal'),
@@ -211,7 +210,6 @@
         saveSessionsStore(store);
         cart = [];
         saveCart();
-        renderSessionSwitcher();
         if (openModal) {
             openSessionModal();
         }
@@ -227,38 +225,77 @@
         loadCart();
         renderCart();
         renderSessionSummary();
-        renderSessionSwitcher();
-    }
-
-    function renderSessionSwitcher() {
-        if (!els.sessionSwitcher) return;
-        const store = getSessionsStore();
-        const ids = Object.keys(store.sessions).sort((a, b) => {
-            const ta = store.sessions[a]?.updatedAt || '';
-            const tb = store.sessions[b]?.updatedAt || '';
-            return tb.localeCompare(ta);
-        });
-
-        if (ids.length <= 1) {
-            els.sessionSwitcher.hidden = ids.length === 0;
-            els.sessionSwitcher.innerHTML = '';
-            return;
-        }
-
-        els.sessionSwitcher.hidden = false;
-        els.sessionSwitcher.innerHTML = ids.map((id, index) => {
-            const data = store.sessions[id];
-            const label = data.confirmed
-                ? `Sesión ${index + 1}: ${sessionLabel(data)}`
-                : `Sesión ${index + 1}: sin configurar`;
-            const selected = id === store.activeId ? 'selected' : '';
-            return `<option value="${escapeHtml(id)}" ${selected}>${escapeHtml(label)}</option>`;
-        }).join('');
     }
 
     function formatMenuItemName(item) {
         const num = item.sort_order || 0;
         return num > 0 ? `${num}. ${item.name}` : item.name;
+    }
+
+    function formatReceiptPreview(order) {
+        const cafeName = (window.APP_CAFE_NAME || 'Artemisa Salón de Té').toUpperCase();
+        const lines = [];
+        lines.push(cafeName);
+        lines.push('COMANDA DE PEDIDO');
+        if (order.id) {
+            lines.push(`Comanda #${order.id}`);
+        }
+        lines.push('-'.repeat(32));
+        lines.push(`Fecha: ${formatOrderDateTime(order.created_at)}`);
+
+        if (order.client_name) {
+            lines.push(`Cliente: ${order.client_name}`);
+        }
+
+        const isTakeaway = order.order_type === 'llevar'
+            || String(order.table_number || '').toUpperCase() === 'PL';
+        if (order.table_number) {
+            lines.push(isTakeaway ? 'PARA LLEVAR (PL)' : `Mesa: ${order.table_number}`);
+        }
+        if (order.waiter_name) {
+            lines.push(`${isTakeaway ? 'Cajero' : 'Mesero'}: ${order.waiter_name}`);
+        }
+
+        lines.push('-'.repeat(32));
+
+        (order.items || []).forEach((item) => {
+            const qty = item.quantity || 1;
+            const name = item.item_name || item.name || 'Producto';
+            lines.push(`${qty}x ${name}`);
+            lines.push(`   Precio unit.: ${formatMoney(item.unit_price || 0)}`);
+
+            const removed = item.removed_ingredients || [];
+            if (removed.length) {
+                lines.push(`   Sin: ${removed.join(', ')}`);
+            }
+
+            (item.added_extras || []).forEach((extra) => {
+                const extraName = extra.name || extra;
+                const extraPrice = extra.price ? ` (+${formatMoney(extra.price)})` : '';
+                lines.push(`   + ${extraName}${extraPrice}`);
+            });
+
+            if (item.notes) {
+                lines.push(`   Nota: ${item.notes}`);
+            }
+
+            lines.push(`   Subtotal: ${formatMoney(item.line_total || 0)}`);
+            lines.push('');
+        });
+
+        lines.push('-'.repeat(32));
+        const subtotal = order.subtotal ?? order.total ?? 0;
+        const tipAmount = order.tip_amount || 0;
+        lines.push(`Subtotal productos: ${formatMoney(subtotal)}`);
+        if (tipAmount > 0) {
+            const tipPct = subtotal > 0 ? Math.round((tipAmount / subtotal) * 100) : tipPercent;
+            lines.push(`Propina ${tipPct}%: ${formatMoney(tipAmount)}`);
+        }
+        lines.push(`TOTAL: ${formatMoney(order.total || 0)}`);
+        lines.push('-'.repeat(32));
+        lines.push('Gracias por su preferencia');
+
+        return lines.join('\n');
     }
 
     function formatOrderDateTime(value) {
@@ -799,7 +836,6 @@
 
         els.orderSessionSummary.textContent = text;
         els.orderSessionBar.hidden = false;
-        renderSessionSwitcher();
     }
 
     function setSessionLocked(locked) {
@@ -886,7 +922,6 @@
     function initOrderSession() {
         loadOrderSession();
         renderSessionSummary();
-        renderSessionSwitcher();
 
         getOrderTypeInputs().forEach((input) => {
             input.addEventListener('change', updateSessionFieldsVisibility);
@@ -914,9 +949,6 @@
 
         els.btnEditSession?.addEventListener('click', () => openSessionModal());
         els.btnNewSession?.addEventListener('click', () => createNewSession(true));
-        els.sessionSwitcher?.addEventListener('change', () => {
-            switchSession(els.sessionSwitcher.value);
-        });
 
         const store = getSessionsStore();
         if (!store.activeId || !orderSession.confirmed) {
@@ -957,46 +989,92 @@
         }
     }
 
+    function buildReprintSummaryLine(order) {
+        const parts = [`#${order.id}`, formatOrderDateTime(order.created_at), formatMoney(order.total)];
+        const isTakeaway = order.order_type === 'llevar';
+        parts.push(isTakeaway ? 'Para llevar' : 'Para servir');
+        if (isTakeaway) {
+            parts.push('PL');
+        } else if (order.table_number) {
+            parts.push(`Mesa ${order.table_number}`);
+        }
+        if (order.waiter_name) {
+            parts.push(`${order.staff_label}: ${order.waiter_name}`);
+        }
+        if (order.client_name) {
+            parts.push(`Cliente: ${order.client_name}`);
+        }
+        return parts.join(' · ');
+    }
+
+    async function fetchOrderDetail(orderId) {
+        const res = await apiFetch(`api/orders.php?id=${orderId}`);
+        const data = await res.json();
+        if (!data.success || !data.order) {
+            throw new Error(data.error || 'No se pudo cargar la comanda');
+        }
+        return data.order;
+    }
+
     function renderReprintList(orders) {
         if (!orders.length) {
             els.reprintList.innerHTML = '<li class="reprint-empty">No se encontraron comandas.</li>';
             return;
         }
 
-        els.reprintList.innerHTML = orders.map((order) => {
-            const client = order.client_name
-                ? `<span class="reprint-meta">Cliente: ${escapeHtml(order.client_name)}</span>`
-                : '';
-            const table = order.order_type === 'llevar'
-                ? '<span class="reprint-meta">PL</span>'
-                : `<span class="reprint-meta">Mesa ${escapeHtml(order.table_number || '')}</span>`;
-            const staff = order.waiter_name
-                ? `<span class="reprint-meta">${escapeHtml(order.staff_label)}: ${escapeHtml(order.waiter_name)}</span>`
-                : '';
+        els.reprintList.innerHTML = orders.map((order) => `
+            <li class="reprint-item" data-order-id="${order.id}">
+                <button type="button" class="reprint-item-toggle" data-order-id="${order.id}" aria-expanded="false">
+                    <span class="reprint-summary-line">${escapeHtml(buildReprintSummaryLine(order))}</span>
+                    <span class="reprint-toggle-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="reprint-detail" id="reprint-detail-${order.id}" hidden>
+                    <p class="reprint-detail-loading">Cargando detalle...</p>
+                </div>
+            </li>
+        `).join('');
 
-            return `
-                <li class="reprint-item">
-                    <div class="reprint-item-main">
-                        <strong class="reprint-id">#${order.id}</strong>
-                        <span class="reprint-date">${escapeHtml(formatOrderDateTime(order.created_at))}</span>
-                        <span class="reprint-total">${formatMoney(order.total)}</span>
-                    </div>
-                    <div class="reprint-item-meta">
-                        <span class="reprint-meta">${escapeHtml(order.service_label)}</span>
-                        ${table}
-                        ${staff}
-                        ${client}
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm reprint-btn" data-reprint-id="${order.id}">
-                        Reimprimir
-                    </button>
-                </li>
-            `;
-        }).join('');
-
-        els.reprintList.querySelectorAll('[data-reprint-id]').forEach((btn) => {
-            btn.addEventListener('click', () => reprintOrder(parseInt(btn.dataset.reprintId, 10)));
+        els.reprintList.querySelectorAll('.reprint-item-toggle').forEach((btn) => {
+            btn.addEventListener('click', () => toggleReprintDetail(parseInt(btn.dataset.orderId, 10), btn));
         });
+    }
+
+    async function toggleReprintDetail(orderId, toggleBtn) {
+        const detailEl = document.getElementById(`reprint-detail-${orderId}`);
+        if (!detailEl) return;
+
+        const isOpen = !detailEl.hidden;
+        els.reprintList.querySelectorAll('.reprint-detail').forEach((el) => {
+            el.hidden = true;
+        });
+        els.reprintList.querySelectorAll('.reprint-item-toggle').forEach((btn) => {
+            btn.setAttribute('aria-expanded', 'false');
+            btn.classList.remove('open');
+        });
+
+        if (isOpen) {
+            return;
+        }
+
+        detailEl.hidden = false;
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.classList.add('open');
+        detailEl.innerHTML = '<p class="reprint-detail-loading">Cargando detalle...</p>';
+
+        try {
+            const order = await fetchOrderDetail(orderId);
+            detailEl.innerHTML = `
+                <pre class="reprint-receipt">${escapeHtml(formatReceiptPreview(order))}</pre>
+                <button type="button" class="btn btn-primary btn-sm reprint-btn" data-reprint-id="${orderId}">
+                    Reimprimir comanda #${orderId}
+                </button>
+            `;
+            detailEl.querySelector('[data-reprint-id]')?.addEventListener('click', () => {
+                reprintOrder(orderId);
+            });
+        } catch (err) {
+            detailEl.innerHTML = `<p class="reprint-detail-error">${escapeHtml(err.message)}</p>`;
+        }
     }
 
     function renderReprintPagination(pagination) {

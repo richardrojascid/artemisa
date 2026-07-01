@@ -248,9 +248,7 @@ body {
     line-height: 1.35;
     color: var(--color-text);
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    text-align: left;
 }
 
 /* Modal bienvenida / tipo de pedido */
@@ -453,22 +451,6 @@ body.session-locked .cart-panel {
     box-sizing: border-box;
 }
 
-.session-switcher {
-    flex: 0 1 140px;
-    min-width: 0;
-    max-width: 180px;
-    padding: 6px 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font-size: 0.72rem;
-}
-
-.session-switcher[hidden] {
-    display: none !important;
-}
-
 /* Modal buscar / reimprimir comandas */
 .reprint-modal {
     max-width: 640px;
@@ -517,55 +499,83 @@ body.session-locked .cart-panel {
 }
 
 .reprint-item {
-    padding: 12px 14px;
     border-bottom: 1px solid var(--color-border);
-    display: grid;
-    gap: 8px;
 }
 
 .reprint-item:last-child {
     border-bottom: none;
 }
 
-.reprint-item-main {
+.reprint-item-toggle {
+    width: 100%;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
 }
 
-.reprint-id {
-    color: var(--color-accent);
-    font-size: 1rem;
+.reprint-item-toggle:hover {
+    background: rgba(255, 255, 255, 0.03);
 }
 
-.reprint-date {
+.reprint-item-toggle.open .reprint-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.reprint-summary-line {
+    flex: 1;
     font-size: 0.8rem;
+    line-height: 1.4;
+    min-width: 0;
+}
+
+.reprint-toggle-icon {
+    flex-shrink: 0;
+    font-size: 0.7rem;
     color: var(--color-text-muted);
+    transition: transform 0.15s;
 }
 
-.reprint-total {
-    margin-left: auto;
-    font-weight: 700;
-    color: var(--color-primary);
+.reprint-detail {
+    padding: 0 14px 14px;
 }
 
-.reprint-item-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 10px;
-}
-
-.reprint-meta {
+.reprint-receipt {
+    margin: 0 0 12px;
+    padding: 12px;
+    background: #fff;
+    color: #111;
+    font-family: 'Courier New', Courier, monospace;
     font-size: 0.78rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.reprint-detail-loading,
+.reprint-detail-error {
+    margin: 0 0 10px;
+    font-size: 0.85rem;
     color: var(--color-text-muted);
-    background: var(--color-surface-2);
-    padding: 2px 8px;
-    border-radius: 999px;
+}
+
+.reprint-detail-error {
+    color: var(--color-danger);
 }
 
 .reprint-btn {
-    justify-self: start;
+    width: 100%;
 }
 
 .reprint-empty {

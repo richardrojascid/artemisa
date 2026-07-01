@@ -140,14 +140,20 @@ const ThermalPrinter = (() => {
     }
 
     async function printOrder(orderData, settings) {
+        const payload = {
+            cafe_name: settings.cafeName || 'Artemisa Salón de Té',
+        };
+        if (orderData?.id && !orderData?.items?.length) {
+            payload.order_id = orderData.id;
+        } else {
+            payload.order = orderData;
+        }
+
         const response = await fetch('api/print.php', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                order: orderData,
-                cafe_name: settings.cafeName || 'Artemisa Salón de Té',
-            }),
+            body: JSON.stringify(payload),
         });
 
         const result = await response.json();
