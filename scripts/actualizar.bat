@@ -64,11 +64,11 @@ if errorlevel 1 (
     echo OK: app.js tiene el cambio de pestaña Cafes activa
 )
 
-findstr /C:"header-logo-box" "index.php" >nul 2>&1
+findstr /C:"header-hero" "index.php" >nul 2>&1
 if errorlevel 1 (
-    echo AVISO: no se encuentra el logo dual en index.php
+    echo AVISO: no se encuentra el header con logos de fondo en index.php
 ) else (
-    echo OK: index.php tiene logo circular + banner
+    echo OK: index.php tiene header hero con logos de fondo
 )
 
 echo.

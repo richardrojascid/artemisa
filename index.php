@@ -34,28 +34,28 @@ $cafeName = $settings->getCafeName();
 </head>
 <body class="mesero-page">
     <header class="app-header">
-        <div class="header-top">
-            <div class="header-brand">
-                <div class="header-logo-box" aria-hidden="true">
-                    <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="header-logo-circular">
+        <div class="header-hero">
+            <div class="header-brand-bg" aria-hidden="true">
+                <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="header-logo-circular">
+                <img src="<?= BRAND_LOGO_BANNER ?>" alt="" class="header-logo-banner">
+            </div>
+            <div class="header-hero-front">
+                <div class="header-actions">
+                    <a href="admin/" class="btn-icon" title="Administración">📋</a>
+                    <button type="button" class="btn-icon" id="btnSettings" aria-label="Configuración">⚙️</button>
+                    <a href="logout.php" class="btn-icon" title="Salir">🚪</a>
                 </div>
-                <img src="<?= BRAND_LOGO_BANNER ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="header-logo-banner">
+                <div class="order-meta">
+                    <label>
+                        Mesa
+                        <input type="text" id="tableNumber" placeholder="Ej: 5" inputmode="numeric" autocomplete="off">
+                    </label>
+                    <label>
+                        Mesero
+                        <input type="text" id="waiterName" placeholder="Tu nombre" autocomplete="name">
+                    </label>
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="admin/" class="btn-icon" title="Administración">📋</a>
-                <button type="button" class="btn-icon" id="btnSettings" aria-label="Configuración">⚙️</button>
-                <a href="logout.php" class="btn-icon" title="Salir">🚪</a>
-            </div>
-        </div>
-        <div class="order-meta">
-            <label>
-                Mesa
-                <input type="text" id="tableNumber" placeholder="Ej: 5" inputmode="numeric" autocomplete="off">
-            </label>
-            <label>
-                Mesero
-                <input type="text" id="waiterName" placeholder="Tu nombre" autocomplete="name">
-            </label>
         </div>
         <div class="category-tabs" id="categoryTabs" role="tablist"></div>
     </header>
