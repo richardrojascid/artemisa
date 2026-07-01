@@ -45,17 +45,11 @@ $cafeName = $settings->getCafeName();
                     <button type="button" class="btn-icon" id="btnSettings" aria-label="Configuración">⚙️</button>
                     <a href="logout.php" class="btn-icon" title="Salir">🚪</a>
                 </div>
-                <div class="order-meta">
-                    <label class="order-meta-field order-meta-mesa">
-                        <span class="order-meta-label">Mesa</span>
-                        <input type="text" id="tableNumber" placeholder="5" inputmode="numeric" autocomplete="off">
-                    </label>
-                    <label class="order-meta-field order-meta-mesero">
-                        <span class="order-meta-label">Mesero</span>
-                        <input type="text" id="waiterName" placeholder="Tu nombre" autocomplete="name">
-                    </label>
-                </div>
             </div>
+        </div>
+        <div class="order-session-bar" id="orderSessionBar" hidden>
+            <p class="order-session-summary" id="orderSessionSummary"></p>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnEditSession">Editar</button>
         </div>
         <div class="category-tabs" id="categoryTabs" role="tablist"></div>
     </header>
@@ -107,6 +101,50 @@ $cafeName = $settings->getCafeName();
             </div>
         </div>
     </aside>
+
+    <dialog class="modal session-modal" id="sessionModal" aria-labelledby="sessionModalTitle">
+        <form id="sessionForm" class="session-form">
+            <div class="session-modal-brand">
+                <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="session-modal-logo" width="120" height="120">
+                <h2 id="sessionModalTitle" class="session-modal-title"><?= htmlspecialchars($cafeName) ?></h2>
+                <p class="session-modal-welcome">Bienvenido — configure el pedido para comenzar</p>
+            </div>
+
+            <fieldset class="order-type-group">
+                <legend class="sr-only">Tipo de pedido</legend>
+                <label class="order-type-option">
+                    <input type="radio" name="orderType" value="servir" checked>
+                    <span>Para servir</span>
+                </label>
+                <label class="order-type-option">
+                    <input type="radio" name="orderType" value="llevar">
+                    <span>Para llevar</span>
+                </label>
+            </fieldset>
+
+            <div class="session-fields" id="sessionFieldsServir">
+                <div class="session-inline-field session-field-mesa">
+                    <span class="session-field-label">Mesa</span>
+                    <input type="text" id="sessionTable" inputmode="numeric" autocomplete="off" placeholder="5">
+                </div>
+                <div class="session-inline-field session-field-staff">
+                    <span class="session-field-label">Mesera(o)</span>
+                    <input type="text" id="sessionWaiter" autocomplete="name" placeholder="Nombre">
+                </div>
+            </div>
+
+            <div class="session-fields session-fields-llevar" id="sessionFieldsLlevar" hidden>
+                <div class="session-inline-field session-field-staff-full">
+                    <span class="session-field-label">Cajera(o)</span>
+                    <input type="text" id="sessionCashier" autocomplete="name" placeholder="Nombre">
+                </div>
+            </div>
+
+            <p class="session-error" id="sessionError" hidden></p>
+
+            <button type="submit" class="btn btn-primary btn-block session-submit">ACEPTAR</button>
+        </form>
+    </dialog>
 
     <dialog class="modal" id="itemModal">
         <form method="dialog" id="itemForm">
@@ -191,6 +229,7 @@ $cafeName = $settings->getCafeName();
     <script>
         window.APP_CAFE_NAME = <?= json_encode($cafeName, JSON_UNESCAPED_UNICODE) ?>;
         window.APP_TIP_PERCENT = <?= json_encode($settings->getTipPercent()) ?>;
+        window.APP_BRAND_LOGO = <?= json_encode(BRAND_LOGO_CIRCULAR, JSON_UNESCAPED_UNICODE) ?>;
     </script>
     <script src="assets/js/printer.js"></script>
     <script src="<?= asset_url('assets/js/app.js') ?>"></script>

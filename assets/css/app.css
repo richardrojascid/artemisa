@@ -62,7 +62,7 @@ body {
 
 .header-hero {
     position: relative;
-    min-height: 172px;
+    min-height: 128px;
     overflow: hidden;
     background: linear-gradient(180deg, var(--color-artemisa-navy-deep) 0%, var(--color-surface) 100%);
 }
@@ -74,7 +74,7 @@ body {
     align-items: center;
     justify-content: flex-start;
     gap: clamp(10px, 2.5vw, 20px);
-    padding: 8px clamp(12px, 3vw, 24px) 36px;
+    padding: 8px clamp(12px, 3vw, 24px) 12px;
     pointer-events: none;
 }
 
@@ -107,9 +107,10 @@ body {
     z-index: 2;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    min-height: 172px;
-    padding: 6px 12px 10px;
+    justify-content: flex-start;
+    align-items: flex-end;
+    min-height: 88px;
+    padding: 6px 12px 8px;
     gap: 6px;
     background: transparent;
 }
@@ -217,6 +218,209 @@ body {
     outline: none;
     border-color: var(--color-primary);
     background: rgba(10, 22, 40, 0.42);
+}
+
+/* Barra resumen sesión (sobre categorías, sin tapar logo) */
+.order-session-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--color-surface-2);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.order-session-bar[hidden] {
+    display: none !important;
+}
+
+.order-session-summary {
+    flex: 1;
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--color-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Modal bienvenida / tipo de pedido */
+body.session-locked .app-header,
+body.session-locked .menu-grid,
+body.session-locked .cart-panel {
+    filter: blur(7px);
+    pointer-events: none;
+    user-select: none;
+}
+
+.session-modal {
+    max-width: 440px;
+    width: calc(100% - 24px);
+    border: 1px solid var(--color-border);
+}
+
+.session-modal::backdrop {
+    background: rgba(10, 22, 40, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+.session-form {
+    padding: 24px 20px 20px;
+}
+
+.session-modal-brand {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.session-modal-logo {
+    display: block;
+    width: min(100px, 28vw);
+    height: auto;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.35));
+}
+
+.session-modal-title {
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+    color: var(--color-accent);
+    line-height: 1.25;
+}
+
+.session-modal-welcome {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-text-muted);
+}
+
+.order-type-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 18px;
+    padding: 0;
+    border: none;
+}
+
+.order-type-option {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-2);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.order-type-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: rgba(201, 162, 39, 0.12);
+}
+
+.order-type-option input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.session-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    margin-bottom: 16px;
+}
+
+.session-fields-llevar {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.session-inline-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.session-field-mesa {
+    flex: 0 0 auto;
+}
+
+.session-field-mesa input {
+    width: 52px;
+    min-width: 52px;
+    text-align: center;
+}
+
+.session-field-staff {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+.session-field-staff-full {
+    width: 100%;
+}
+
+.session-field-staff-full input {
+    flex: 1;
+    min-width: 0;
+}
+
+.session-field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-artemisa-navy);
+    white-space: nowrap;
+    filter: brightness(1.35);
+}
+
+.session-fields input {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-size: 0.88rem;
+    box-sizing: border-box;
+    flex: 1;
+    min-width: 0;
+}
+
+.session-fields input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.session-error {
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    color: var(--color-danger);
+    background: rgba(214, 69, 69, 0.12);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(214, 69, 69, 0.35);
+}
+
+.session-error[hidden] {
+    display: none !important;
+}
+
+.session-submit {
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    padding: 14px;
 }
 
 .category-tabs {
@@ -858,12 +1062,12 @@ body {
     }
 
     body.mesero-page .header-hero {
-        min-height: 200px;
+        min-height: 148px;
     }
 
     body.mesero-page .header-hero-front {
-        min-height: 200px;
-        padding: 8px 20px 14px;
+        min-height: 96px;
+        padding: 8px 20px 10px;
     }
 
     body.mesero-page .header-logo-circular {
@@ -878,65 +1082,62 @@ body {
     }
 
     body.mesero-page .header-brand-bg {
-        padding-bottom: 40px;
-    }
-
-    body.mesero-page .order-meta-mesa input {
-        width: 56px;
-        min-width: 56px;
+        padding-bottom: 14px;
     }
 }
 
 @media (min-width: 600px) and (max-width: 959px) {
     .header-hero {
-        min-height: 180px;
+        min-height: 136px;
     }
 
     .header-hero-front {
-        min-height: 180px;
+        min-height: 84px;
+    }
+}
+
+@media (max-width: 480px) {
+    .order-session-summary {
+        white-space: normal;
+        font-size: 0.76rem;
+    }
+
+    .order-type-option {
+        flex: 1 1 100%;
     }
 }
 
 @media (max-width: 380px) {
     .header-hero {
-        min-height: 148px;
+        min-height: 112px;
     }
 
     .header-hero-front {
-        min-height: 148px;
-        padding: 4px 10px 8px;
+        min-height: 72px;
+        padding: 4px 10px 6px;
     }
 
     .header-brand-bg {
-        padding: 6px 10px 32px;
+        padding: 6px 10px 8px;
         gap: 8px;
     }
 
     .header-logo-circular {
-        height: 80px;
+        height: 72px;
     }
 
     .header-logo-banner {
-        height: 52px;
+        height: 48px;
         max-width: 54vw;
-    }
-
-    .order-meta {
-        gap: 8px;
-    }
-
-    .order-meta-label {
-        font-size: 0.68rem;
-    }
-
-    .order-meta-mesa input {
-        width: 42px;
-        min-width: 42px;
     }
 
     .cart-toggle {
         padding: 12px 14px;
         font-size: 0.9rem;
+    }
+
+    .session-form {
+        padding: 20px 16px 16px;
     }
 }
 

@@ -21,10 +21,18 @@ class EscPosPrinter
         $out .= self::text('Fecha: ' . date('d/m/Y H:i') . "\n");
 
         if (!empty($order['table_number'])) {
-            $out .= self::text('Mesa: ' . $order['table_number'] . "\n");
+            $isTakeaway = strtoupper((string) $order['table_number']) === 'PL';
+            if ($isTakeaway) {
+                $out .= self::text("PARA LLEVAR (PL)\n");
+            } else {
+                $out .= self::text('Mesa: ' . $order['table_number'] . "\n");
+            }
         }
         if (!empty($order['waiter_name'])) {
-            $out .= self::text('Mesero: ' . $order['waiter_name'] . "\n");
+            $staffLabel = (!empty($order['table_number']) && strtoupper((string) $order['table_number']) === 'PL')
+                ? 'Cajero'
+                : 'Mesero';
+            $out .= self::text($staffLabel . ': ' . $order['waiter_name'] . "\n");
         }
         if (!empty($order['id'])) {
             $out .= self::text('Orden #: ' . $order['id'] . "\n");

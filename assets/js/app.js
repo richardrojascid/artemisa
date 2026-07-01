@@ -4,6 +4,7 @@
 (() => {
     const STORAGE_KEY = 'artemisa_comanda_settings';
     const CART_KEY = 'artemisa_comanda_cart';
+    const SESSION_KEY = 'artemisa_order_session';
 
     let menu = [];
     let cart = [];
@@ -12,6 +13,12 @@
     let selectedCategoryId = null;
     let selectedSize = 'simple';
     let tipPercent = window.APP_TIP_PERCENT || 10;
+    let orderSession = {
+        orderType: 'servir',
+        tableNumber: '',
+        staffName: '',
+        confirmed: false,
+    };
 
     const $ = (sel) => document.querySelector(sel);
 
@@ -33,8 +40,6 @@
         closeCart: $('#closeCart'),
         btnClearCart: $('#btnClearCart'),
         btnSendOrder: $('#btnSendOrder'),
-        tableNumber: $('#tableNumber'),
-        waiterName: $('#waiterName'),
         itemModal: $('#itemModal'),
         itemForm: $('#itemForm'),
         modalItemName: $('#modalItemName'),
@@ -59,6 +64,17 @@
         printerMode: $('#printerMode'),
         btnConnectPrinter: $('#btnConnectPrinter'),
         printerStatus: $('#printerStatus'),
+        sessionModal: $('#sessionModal'),
+        sessionForm: $('#sessionForm'),
+        sessionFieldsServir: $('#sessionFieldsServir'),
+        sessionFieldsLlevar: $('#sessionFieldsLlevar'),
+        sessionTable: $('#sessionTable'),
+        sessionWaiter: $('#sessionWaiter'),
+        sessionCashier: $('#sessionCashier'),
+        sessionError: $('#sessionError'),
+        orderSessionBar: $('#orderSessionBar'),
+        orderSessionSummary: $('#orderSessionSummary'),
+        btnEditSession: $('#btnEditSession'),
     };
 
     const fetchOpts = { credentials: 'same-origin' };
@@ -486,13 +502,15 @@
 
     async function sendOrder() {
         if (cart.length === 0) return;
+        if (!requireOrderSession()) return;
 
         els.btnSendOrder.disabled = true;
         els.btnSendOrder.textContent = 'Enviando...';
 
         const payload = {
-            table_number: els.tableNumber.value.trim() || null,
-            waiter_name: els.waiterName.value.trim() || null,
+            table_number: getSessionTableForOrder(),
+            waiter_name: getSessionStaffForOrder(),
+            order_type: orderSession.orderType,
             tip_mode: getTipMode(),
             tip_amount: getCartTip(),
             tip_percent: tipPercent,
@@ -549,14 +567,193 @@
         return div.innerHTML;
     }
 
+    function loadOrderSession() {
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+            if (saved && typeof saved === 'object') {
+                orderSession = {
+                    orderType: saved.orderType === 'llevar' ? 'llevar' : 'servir',
+                    tableNumber: saved.tableNumber || '',
+                    staffName: saved.staffName || '',
+                    confirmed: Boolean(saved.confirmed),
+                };
+            }
+        } catch {
+            orderSession = { orderType: 'servir', tableNumber: '', staffName: '', confirmed: false };
+        }
+    }
+
+    function saveOrderSession() {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(orderSession));
+    }
+
+    function getOrderTypeInputs() {
+        return els.sessionForm?.querySelectorAll('input[name="orderType"]') || [];
+    }
+
+    function getSelectedOrderType() {
+        const checked = els.sessionForm?.querySelector('input[name="orderType"]:checked');
+        return checked?.value === 'llevar' ? 'llevar' : 'servir';
+    }
+
+    function updateSessionFieldsVisibility() {
+        const type = getSelectedOrderType();
+        const isServir = type === 'servir';
+        if (els.sessionFieldsServir) els.sessionFieldsServir.hidden = !isServir;
+        if (els.sessionFieldsLlevar) els.sessionFieldsLlevar.hidden = isServir;
+    }
+
+    function fillSessionForm() {
+        getOrderTypeInputs().forEach((input) => {
+            input.checked = input.value === orderSession.orderType;
+        });
+        updateSessionFieldsVisibility();
+        if (els.sessionTable) els.sessionTable.value = orderSession.tableNumber || '';
+        if (els.sessionWaiter) els.sessionWaiter.value = orderSession.orderType === 'servir' ? (orderSession.staffName || '') : '';
+        if (els.sessionCashier) els.sessionCashier.value = orderSession.orderType === 'llevar' ? (orderSession.staffName || '') : '';
+        if (els.sessionError) {
+            els.sessionError.hidden = true;
+            els.sessionError.textContent = '';
+        }
+    }
+
+    function renderSessionSummary() {
+        if (!els.orderSessionBar || !els.orderSessionSummary) return;
+
+        if (!orderSession.confirmed) {
+            els.orderSessionBar.hidden = true;
+            return;
+        }
+
+        let text;
+        if (orderSession.orderType === 'llevar') {
+            text = `Para llevar · PL · Cajera(o): ${orderSession.staffName}`;
+        } else {
+            text = `Para servir · Mesa ${orderSession.tableNumber} · Mesera(o): ${orderSession.staffName}`;
+        }
+
+        els.orderSessionSummary.textContent = text;
+        els.orderSessionBar.hidden = false;
+    }
+
+    function setSessionLocked(locked) {
+        document.body.classList.toggle('session-locked', locked);
+    }
+
+    function openSessionModal() {
+        fillSessionForm();
+        setSessionLocked(true);
+        els.sessionModal.showModal();
+        const focusTarget = getSelectedOrderType() === 'servir' ? els.sessionTable : els.sessionCashier;
+        setTimeout(() => focusTarget?.focus(), 50);
+    }
+
+    function closeSessionModal() {
+        els.sessionModal.close();
+        if (orderSession.confirmed) {
+            setSessionLocked(false);
+        }
+    }
+
+    function validateSessionForm() {
+        const type = getSelectedOrderType();
+        if (type === 'servir') {
+            const mesa = els.sessionTable?.value.trim() || '';
+            const mesero = els.sessionWaiter?.value.trim() || '';
+            if (!mesa) return 'Ingresa el número de mesa.';
+            if (!mesero) return 'Ingresa el nombre de la mesera(o).';
+            return null;
+        }
+        const cajero = els.sessionCashier?.value.trim() || '';
+        if (!cajero) return 'Ingresa el nombre de la cajera(o).';
+        return null;
+    }
+
+    function confirmSession() {
+        const type = getSelectedOrderType();
+        const error = validateSessionForm();
+        if (error) {
+            if (els.sessionError) {
+                els.sessionError.textContent = error;
+                els.sessionError.hidden = false;
+            }
+            return false;
+        }
+
+        orderSession.orderType = type;
+        if (type === 'servir') {
+            orderSession.tableNumber = els.sessionTable.value.trim();
+            orderSession.staffName = els.sessionWaiter.value.trim();
+        } else {
+            orderSession.tableNumber = 'PL';
+            orderSession.staffName = els.sessionCashier.value.trim();
+        }
+        orderSession.confirmed = true;
+        saveOrderSession();
+        renderSessionSummary();
+        closeSessionModal();
+        setSessionLocked(false);
+        showToast('Pedido configurado');
+        return true;
+    }
+
+    function getSessionTableForOrder() {
+        if (!orderSession.confirmed) return null;
+        return orderSession.orderType === 'llevar' ? 'PL' : orderSession.tableNumber;
+    }
+
+    function getSessionStaffForOrder() {
+        return orderSession.confirmed ? orderSession.staffName : null;
+    }
+
+    function requireOrderSession() {
+        if (orderSession.confirmed) return true;
+        openSessionModal();
+        showToast('Configure el pedido antes de continuar', 'error');
+        return false;
+    }
+
+    function initOrderSession() {
+        loadOrderSession();
+        renderSessionSummary();
+
+        getOrderTypeInputs().forEach((input) => {
+            input.addEventListener('change', updateSessionFieldsVisibility);
+        });
+
+        els.sessionForm?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            confirmSession();
+        });
+
+        els.sessionModal?.addEventListener('cancel', (e) => {
+            if (!orderSession.confirmed) {
+                e.preventDefault();
+            }
+        });
+
+        els.sessionModal?.addEventListener('close', () => {
+            if (!orderSession.confirmed) {
+                setSessionLocked(true);
+                els.sessionModal.showModal();
+            } else {
+                setSessionLocked(false);
+            }
+        });
+
+        els.btnEditSession?.addEventListener('click', () => openSessionModal());
+
+        if (!orderSession.confirmed) {
+            openSessionModal();
+        } else {
+            setSessionLocked(false);
+        }
+    }
+
     function initSettings() {
         const settings = loadSettings();
 
         if (settings.printerMode) els.printerMode.value = settings.printerMode;
-        if (settings.tableNumber) els.tableNumber.value = settings.tableNumber;
-        if (settings.waiterName) els.waiterName.value = settings.waiterName;
-
-        updatePrinterStatus();
 
         els.printerMode.addEventListener('change', () => {
             $('#btPrinterGroup').style.display = els.printerMode.value === 'bluetooth' ? 'block' : 'none';
@@ -587,12 +784,7 @@
             }
         });
 
-        els.tableNumber.addEventListener('change', () => {
-            saveSettings({ ...loadSettings(), tableNumber: els.tableNumber.value });
-        });
-        els.waiterName.addEventListener('change', () => {
-            saveSettings({ ...loadSettings(), waiterName: els.waiterName.value });
-        });
+        updatePrinterStatus();
     }
 
     function updatePrinterStatus() {
@@ -655,6 +847,7 @@
     function init() {
         loadCart();
         initSettings();
+        initOrderSession();
         bindEvents();
         renderCart();
         loadMenu();

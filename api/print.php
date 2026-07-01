@@ -92,10 +92,12 @@ function receiptToPlainText(array $order, array $items, string $cafeName): strin
     $lines[] = 'Fecha: ' . date('d/m/Y H:i');
 
     if (!empty($order['table_number'])) {
-        $lines[] = 'Mesa: ' . $order['table_number'];
+        $isTakeaway = strtoupper((string) $order['table_number']) === 'PL';
+        $lines[] = $isTakeaway ? 'PARA LLEVAR (PL)' : 'Mesa: ' . $order['table_number'];
     }
     if (!empty($order['waiter_name'])) {
-        $lines[] = 'Mesero: ' . $order['waiter_name'];
+        $isTakeaway = !empty($order['table_number']) && strtoupper((string) $order['table_number']) === 'PL';
+        $lines[] = ($isTakeaway ? 'Cajero' : 'Mesero') . ': ' . $order['waiter_name'];
     }
     if (!empty($order['id'])) {
         $lines[] = 'Orden #: ' . $order['id'];

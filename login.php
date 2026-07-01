@@ -78,6 +78,7 @@ $cafeName = $settings->getCafeName();
         </div>
     </main>
     <script>
+    sessionStorage.removeItem('artemisa_order_session');
     (() => {
         const pinInput = document.getElementById('pin');
         document.getElementById('pinPad').addEventListener('click', (e) => {
