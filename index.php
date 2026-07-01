@@ -46,12 +46,12 @@ $cafeName = $settings->getCafeName();
                     <a href="logout.php" class="btn-icon" title="Salir">🚪</a>
                 </div>
                 <div class="order-meta">
-                    <label>
-                        Mesa
-                        <input type="text" id="tableNumber" placeholder="Ej: 5" inputmode="numeric" autocomplete="off">
+                    <label class="order-meta-field order-meta-mesa">
+                        <span class="order-meta-label">Mesa</span>
+                        <input type="text" id="tableNumber" placeholder="5" inputmode="numeric" autocomplete="off">
                     </label>
-                    <label>
-                        Mesero
+                    <label class="order-meta-field order-meta-mesero">
+                        <span class="order-meta-label">Mesero</span>
                         <input type="text" id="waiterName" placeholder="Tu nombre" autocomplete="name">
                     </label>
                 </div>
