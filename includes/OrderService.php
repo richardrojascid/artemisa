@@ -47,12 +47,16 @@ class OrderService
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO orders (table_number, waiter_name, subtotal, tip_amount, total, include_tip, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+                INSERT INTO orders (table_number, waiter_name, client_name, order_type, subtotal, tip_amount, total, include_tip, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
             ");
+            $orderType = ($payload['order_type'] ?? 'servir') === 'llevar' ? 'llevar' : 'servir';
+            $clientName = trim((string) ($payload['client_name'] ?? ''));
             $stmt->execute([
                 $payload['table_number'] ?? null,
                 $payload['waiter_name'] ?? null,
+                $clientName !== '' ? $clientName : null,
+                $orderType,
                 $subtotal,
                 $tipAmount,
                 $total,
@@ -88,6 +92,8 @@ class OrderService
                 'id' => $orderId,
                 'table_number' => $payload['table_number'] ?? null,
                 'waiter_name' => $payload['waiter_name'] ?? null,
+                'client_name' => $clientName !== '' ? $clientName : null,
+                'order_type' => $orderType,
                 'subtotal' => $subtotal,
                 'tip_percent' => $tipMode === 'percent' ? $tipPercent : null,
                 'tip_amount' => $tipAmount,
@@ -129,7 +135,84 @@ class OrderService
         $order['tip_amount'] = (float) ($order['tip_amount'] ?? 0);
         $order['total'] = (float) $order['total'];
         $order['include_tip'] = !empty($order['include_tip']);
+        $order['order_type'] = $order['order_type'] ?? (
+            strtoupper((string) ($order['table_number'] ?? '')) === 'PL' ? 'llevar' : 'servir'
+        );
         return $order;
+    }
+
+    /**
+     * @return array{orders: array<int, array>, pagination: array{page: int, per_page: int, total: int, pages: int}}
+     */
+    public function listOrders(string $query = '', int $page = 1, int $perPage = 15): array
+    {
+        $page = max(1, $page);
+        $perPage = max(5, min(50, $perPage));
+        $offset = ($page - 1) * $perPage;
+        $query = trim($query);
+
+        $where = '';
+        $params = [];
+        if ($query !== '') {
+            $like = '%' . $query . '%';
+            $where = 'WHERE (
+                CAST(id AS TEXT) LIKE ?
+                OR IFNULL(client_name, \'\') LIKE ?
+                OR IFNULL(waiter_name, \'\') LIKE ?
+                OR IFNULL(table_number, \'\') LIKE ?
+            )';
+            $params = [$like, $like, $like, $like];
+        }
+
+        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM orders {$where}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $listParams = array_merge($params, [$perPage, $offset]);
+        $stmt = $this->db->prepare("
+            SELECT id, table_number, waiter_name, client_name, order_type,
+                   subtotal, tip_amount, total, created_at
+            FROM orders
+            {$where}
+            ORDER BY datetime(created_at) DESC, id DESC
+            LIMIT ? OFFSET ?
+        ");
+        $stmt->execute($listParams);
+        $rows = $stmt->fetchAll();
+
+        $orders = array_map(fn (array $row) => $this->formatOrderSummary($row), $rows);
+
+        return [
+            'orders' => $orders,
+            'pagination' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'pages' => max(1, (int) ceil($total / $perPage)),
+            ],
+        ];
+    }
+
+    private function formatOrderSummary(array $row): array
+    {
+        $orderType = $row['order_type'] ?? 'servir';
+        if ($orderType !== 'llevar' && strtoupper((string) ($row['table_number'] ?? '')) === 'PL') {
+            $orderType = 'llevar';
+        }
+
+        return [
+            'id' => (int) $row['id'],
+            'table_number' => $row['table_number'],
+            'waiter_name' => $row['waiter_name'],
+            'client_name' => $row['client_name'],
+            'order_type' => $orderType,
+            'subtotal' => (float) $row['subtotal'],
+            'tip_amount' => (float) ($row['tip_amount'] ?? 0),
+            'total' => (float) $row['total'],
+            'created_at' => $row['created_at'],
+            'service_label' => $orderType === 'llevar' ? 'Para llevar' : 'Para servir',
+            'staff_label' => $orderType === 'llevar' ? 'Cajera(o)' : 'Mesera(o)',
+        ];
     }
 
     private function processCartItem(array $cartItem): array

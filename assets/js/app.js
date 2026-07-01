@@ -3,8 +3,8 @@
  */
 (() => {
     const STORAGE_KEY = 'artemisa_comanda_settings';
-    const CART_KEY = 'artemisa_comanda_cart';
-    const SESSION_KEY = 'artemisa_order_session';
+    const CART_KEY_PREFIX = 'artemisa_comanda_cart';
+    const SESSIONS_STORE = 'artemisa_sessions_store';
 
     let menu = [];
     let cart = [];
@@ -14,11 +14,14 @@
     let selectedSize = 'simple';
     let tipPercent = window.APP_TIP_PERCENT || 10;
     let orderSession = {
+        id: null,
         orderType: 'servir',
         tableNumber: '',
         staffName: '',
+        clientName: '',
         confirmed: false,
     };
+    let reprintState = { query: '', page: 1, pages: 1 };
 
     const $ = (sel) => document.querySelector(sel);
 
@@ -75,6 +78,16 @@
         orderSessionBar: $('#orderSessionBar'),
         orderSessionSummary: $('#orderSessionSummary'),
         btnEditSession: $('#btnEditSession'),
+        btnNewSession: $('#btnNewSession'),
+        sessionSwitcher: $('#sessionSwitcher'),
+        sessionClientName: $('#sessionClientName'),
+        btnReprintOrders: $('#btnReprintOrders'),
+        reprintModal: $('#reprintModal'),
+        reprintClose: $('#reprintClose'),
+        reprintSearchForm: $('#reprintSearchForm'),
+        reprintSearch: $('#reprintSearch'),
+        reprintList: $('#reprintList'),
+        reprintPagination: $('#reprintPagination'),
     };
 
     const fetchOpts = { credentials: 'same-origin' };
@@ -91,16 +104,175 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     }
 
+    function getCartKey() {
+        return orderSession.id ? `${CART_KEY_PREFIX}_${orderSession.id}` : CART_KEY_PREFIX;
+    }
+
     function loadCart() {
         try {
-            cart = JSON.parse(localStorage.getItem(CART_KEY)) || [];
+            cart = JSON.parse(localStorage.getItem(getCartKey())) || [];
         } catch {
             cart = [];
         }
     }
 
     function saveCart() {
-        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        localStorage.setItem(getCartKey(), JSON.stringify(cart));
+    }
+
+    function createSessionId() {
+        return `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function getSessionsStore() {
+        try {
+            const store = JSON.parse(localStorage.getItem(SESSIONS_STORE));
+            if (store && typeof store === 'object' && store.sessions) {
+                return store;
+            }
+        } catch {
+            /* ignore */
+        }
+        return { activeId: null, sessions: {} };
+    }
+
+    function saveSessionsStore(store) {
+        localStorage.setItem(SESSIONS_STORE, JSON.stringify(store));
+    }
+
+    function sessionLabel(data) {
+        const type = data.orderType === 'llevar' ? 'Llevar' : `Mesa ${data.tableNumber || '?'}`;
+        const staff = data.staffName ? ` · ${data.staffName}` : '';
+        const client = data.clientName ? ` · ${data.clientName}` : '';
+        return `${type}${staff}${client}`;
+    }
+
+    function syncOrderSessionFromStore() {
+        const store = getSessionsStore();
+        const id = store.activeId;
+        if (!id || !store.sessions[id]) {
+            orderSession = {
+                id: null,
+                orderType: 'servir',
+                tableNumber: '',
+                staffName: '',
+                clientName: '',
+                confirmed: false,
+            };
+            return false;
+        }
+        const data = store.sessions[id];
+        orderSession = {
+            id,
+            orderType: data.orderType === 'llevar' ? 'llevar' : 'servir',
+            tableNumber: data.tableNumber || '',
+            staffName: data.staffName || '',
+            clientName: data.clientName || '',
+            confirmed: Boolean(data.confirmed),
+        };
+        return true;
+    }
+
+    function persistActiveSession() {
+        if (!orderSession.id) return;
+        const store = getSessionsStore();
+        store.activeId = orderSession.id;
+        store.sessions[orderSession.id] = {
+            orderType: orderSession.orderType,
+            tableNumber: orderSession.tableNumber,
+            staffName: orderSession.staffName,
+            clientName: orderSession.clientName,
+            confirmed: orderSession.confirmed,
+            updatedAt: new Date().toISOString(),
+        };
+        saveSessionsStore(store);
+    }
+
+    function createNewSession(openModal = true) {
+        const id = createSessionId();
+        orderSession = {
+            id,
+            orderType: 'servir',
+            tableNumber: '',
+            staffName: '',
+            clientName: '',
+            confirmed: false,
+        };
+        const store = getSessionsStore();
+        store.activeId = id;
+        store.sessions[id] = {
+            orderType: 'servir',
+            tableNumber: '',
+            staffName: '',
+            clientName: '',
+            confirmed: false,
+            updatedAt: new Date().toISOString(),
+        };
+        saveSessionsStore(store);
+        cart = [];
+        saveCart();
+        renderSessionSwitcher();
+        if (openModal) {
+            openSessionModal();
+        }
+    }
+
+    function switchSession(sessionId) {
+        if (!sessionId) return;
+        const store = getSessionsStore();
+        if (!store.sessions[sessionId]) return;
+        store.activeId = sessionId;
+        saveSessionsStore(store);
+        syncOrderSessionFromStore();
+        loadCart();
+        renderCart();
+        renderSessionSummary();
+        renderSessionSwitcher();
+    }
+
+    function renderSessionSwitcher() {
+        if (!els.sessionSwitcher) return;
+        const store = getSessionsStore();
+        const ids = Object.keys(store.sessions).sort((a, b) => {
+            const ta = store.sessions[a]?.updatedAt || '';
+            const tb = store.sessions[b]?.updatedAt || '';
+            return tb.localeCompare(ta);
+        });
+
+        if (ids.length <= 1) {
+            els.sessionSwitcher.hidden = ids.length === 0;
+            els.sessionSwitcher.innerHTML = '';
+            return;
+        }
+
+        els.sessionSwitcher.hidden = false;
+        els.sessionSwitcher.innerHTML = ids.map((id, index) => {
+            const data = store.sessions[id];
+            const label = data.confirmed
+                ? `Sesión ${index + 1}: ${sessionLabel(data)}`
+                : `Sesión ${index + 1}: sin configurar`;
+            const selected = id === store.activeId ? 'selected' : '';
+            return `<option value="${escapeHtml(id)}" ${selected}>${escapeHtml(label)}</option>`;
+        }).join('');
+    }
+
+    function formatMenuItemName(item) {
+        const num = item.sort_order || 0;
+        return num > 0 ? `${num}. ${item.name}` : item.name;
+    }
+
+    function formatOrderDateTime(value) {
+        if (!value) return '';
+        const normalized = String(value).replace(' ', 'T');
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString('es-CL', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     }
 
     function formatMoney(amount) {
@@ -228,8 +400,8 @@
 
         els.menuGrid.innerHTML = category.items.map(item => `
             <article class="menu-card" data-item-id="${item.id}" tabindex="0" role="button"
-                     aria-label="${escapeHtml(item.name)} ${formatItemPrice(item)}">
-                <h3>${escapeHtml(item.name)}</h3>
+                     aria-label="${escapeHtml(formatMenuItemName(item))} ${formatItemPrice(item)}">
+                <h3>${escapeHtml(formatMenuItemName(item))}</h3>
                 ${item.description ? `<p class="description">${escapeHtml(item.description)}</p>` : ''}
                 <p class="price">${formatItemPrice(item)}</p>
             </article>
@@ -285,7 +457,7 @@
         currentItem = item;
         editingCartIndex = cartIndex;
 
-        els.modalItemName.textContent = item.name;
+        els.modalItemName.textContent = formatMenuItemName(item);
         els.modalItemDesc.textContent = item.description || '';
         els.modalItemPrice.textContent = formatItemPrice(item);
 
@@ -510,6 +682,7 @@
         const payload = {
             table_number: getSessionTableForOrder(),
             waiter_name: getSessionStaffForOrder(),
+            client_name: orderSession.clientName?.trim() || null,
             order_type: orderSession.orderType,
             tip_mode: getTipMode(),
             tip_amount: getCartTip(),
@@ -544,7 +717,7 @@
             try {
                 const printResult = await ThermalPrinter.printOrder(data.order, settings);
                 const methodLabels = { bluetooth: 'Bluetooth', browser: 'navegador', network: 'red' };
-                showToast(`Comanda enviada e impresa (${methodLabels[printResult.method] || 'ok'})`);
+                showToast(`Comanda #${data.order.id} enviada e impresa (${methodLabels[printResult.method] || 'ok'})`);
             } catch (printErr) {
                 showToast('Pedido guardado. Impresión: ' + printErr.message, 'error');
             }
@@ -568,23 +741,11 @@
     }
 
     function loadOrderSession() {
-        try {
-            const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
-            if (saved && typeof saved === 'object') {
-                orderSession = {
-                    orderType: saved.orderType === 'llevar' ? 'llevar' : 'servir',
-                    tableNumber: saved.tableNumber || '',
-                    staffName: saved.staffName || '',
-                    confirmed: Boolean(saved.confirmed),
-                };
-            }
-        } catch {
-            orderSession = { orderType: 'servir', tableNumber: '', staffName: '', confirmed: false };
-        }
+        syncOrderSessionFromStore();
     }
 
     function saveOrderSession() {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(orderSession));
+        persistActiveSession();
     }
 
     function getOrderTypeInputs() {
@@ -611,6 +772,7 @@
         if (els.sessionTable) els.sessionTable.value = orderSession.tableNumber || '';
         if (els.sessionWaiter) els.sessionWaiter.value = orderSession.orderType === 'servir' ? (orderSession.staffName || '') : '';
         if (els.sessionCashier) els.sessionCashier.value = orderSession.orderType === 'llevar' ? (orderSession.staffName || '') : '';
+        if (els.sessionClientName) els.sessionClientName.value = orderSession.clientName || '';
         if (els.sessionError) {
             els.sessionError.hidden = true;
             els.sessionError.textContent = '';
@@ -631,9 +793,13 @@
         } else {
             text = `Para servir · Mesa ${orderSession.tableNumber} · Mesera(o): ${orderSession.staffName}`;
         }
+        if (orderSession.clientName) {
+            text += ` · Cliente: ${orderSession.clientName}`;
+        }
 
         els.orderSessionSummary.textContent = text;
         els.orderSessionBar.hidden = false;
+        renderSessionSwitcher();
     }
 
     function setSessionLocked(locked) {
@@ -681,12 +847,16 @@
         }
 
         orderSession.orderType = type;
+        orderSession.clientName = els.sessionClientName?.value.trim() || '';
         if (type === 'servir') {
             orderSession.tableNumber = els.sessionTable.value.trim();
             orderSession.staffName = els.sessionWaiter.value.trim();
         } else {
             orderSession.tableNumber = 'PL';
             orderSession.staffName = els.sessionCashier.value.trim();
+        }
+        if (!orderSession.id) {
+            orderSession.id = createSessionId();
         }
         orderSession.confirmed = true;
         saveOrderSession();
@@ -716,6 +886,7 @@
     function initOrderSession() {
         loadOrderSession();
         renderSessionSummary();
+        renderSessionSwitcher();
 
         getOrderTypeInputs().forEach((input) => {
             input.addEventListener('change', updateSessionFieldsVisibility);
@@ -742,12 +913,150 @@
         });
 
         els.btnEditSession?.addEventListener('click', () => openSessionModal());
+        els.btnNewSession?.addEventListener('click', () => createNewSession(true));
+        els.sessionSwitcher?.addEventListener('change', () => {
+            switchSession(els.sessionSwitcher.value);
+        });
 
-        if (!orderSession.confirmed) {
-            openSessionModal();
+        const store = getSessionsStore();
+        if (!store.activeId || !orderSession.confirmed) {
+            if (!store.activeId) {
+                createNewSession(true);
+            } else {
+                openSessionModal();
+            }
         } else {
             setSessionLocked(false);
         }
+    }
+
+    async function loadReprintOrders(page = 1) {
+        reprintState.page = page;
+        const params = new URLSearchParams({
+            page: String(page),
+            per_page: '15',
+        });
+        if (reprintState.query) {
+            params.set('q', reprintState.query);
+        }
+
+        els.reprintList.innerHTML = '<li class="reprint-empty">Cargando comandas...</li>';
+
+        try {
+            const res = await apiFetch(`api/orders.php?${params.toString()}`);
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Error al cargar comandas');
+            }
+            reprintState.pages = data.pagination?.pages || 1;
+            renderReprintList(data.orders || []);
+            renderReprintPagination(data.pagination || {});
+        } catch (err) {
+            els.reprintList.innerHTML = `<li class="reprint-empty">${escapeHtml(err.message)}</li>`;
+            els.reprintPagination.innerHTML = '';
+        }
+    }
+
+    function renderReprintList(orders) {
+        if (!orders.length) {
+            els.reprintList.innerHTML = '<li class="reprint-empty">No se encontraron comandas.</li>';
+            return;
+        }
+
+        els.reprintList.innerHTML = orders.map((order) => {
+            const client = order.client_name
+                ? `<span class="reprint-meta">Cliente: ${escapeHtml(order.client_name)}</span>`
+                : '';
+            const table = order.order_type === 'llevar'
+                ? '<span class="reprint-meta">PL</span>'
+                : `<span class="reprint-meta">Mesa ${escapeHtml(order.table_number || '')}</span>`;
+            const staff = order.waiter_name
+                ? `<span class="reprint-meta">${escapeHtml(order.staff_label)}: ${escapeHtml(order.waiter_name)}</span>`
+                : '';
+
+            return `
+                <li class="reprint-item">
+                    <div class="reprint-item-main">
+                        <strong class="reprint-id">#${order.id}</strong>
+                        <span class="reprint-date">${escapeHtml(formatOrderDateTime(order.created_at))}</span>
+                        <span class="reprint-total">${formatMoney(order.total)}</span>
+                    </div>
+                    <div class="reprint-item-meta">
+                        <span class="reprint-meta">${escapeHtml(order.service_label)}</span>
+                        ${table}
+                        ${staff}
+                        ${client}
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm reprint-btn" data-reprint-id="${order.id}">
+                        Reimprimir
+                    </button>
+                </li>
+            `;
+        }).join('');
+
+        els.reprintList.querySelectorAll('[data-reprint-id]').forEach((btn) => {
+            btn.addEventListener('click', () => reprintOrder(parseInt(btn.dataset.reprintId, 10)));
+        });
+    }
+
+    function renderReprintPagination(pagination) {
+        const page = pagination.page || 1;
+        const pages = pagination.pages || 1;
+        const total = pagination.total || 0;
+
+        if (pages <= 1) {
+            els.reprintPagination.innerHTML = total > 0
+                ? `<span class="reprint-page-info">${total} comanda(s)</span>`
+                : '';
+            return;
+        }
+
+        els.reprintPagination.innerHTML = `
+            <button type="button" class="btn btn-secondary btn-sm" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>Anterior</button>
+            <span class="reprint-page-info">Página ${page} de ${pages} (${total} comandas)</span>
+            <button type="button" class="btn btn-secondary btn-sm" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''}>Siguiente</button>
+        `;
+
+        els.reprintPagination.querySelectorAll('[data-page]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const nextPage = parseInt(btn.dataset.page, 10);
+                if (!Number.isNaN(nextPage)) {
+                    loadReprintOrders(nextPage);
+                }
+            });
+        });
+    }
+
+    async function reprintOrder(orderId) {
+        try {
+            const settings = {
+                ...loadSettings(),
+                cafeName: window.APP_CAFE_NAME || 'Artemisa Salón de Té',
+            };
+            const printResult = await ThermalPrinter.printOrder({ id: orderId }, settings);
+            const methodLabels = { bluetooth: 'Bluetooth', browser: 'navegador', network: 'red' };
+            showToast(`Comanda #${orderId} reimpresa (${methodLabels[printResult.method] || 'ok'})`);
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    function openReprintModal() {
+        reprintState.query = '';
+        reprintState.page = 1;
+        if (els.reprintSearch) els.reprintSearch.value = '';
+        els.reprintModal.showModal();
+        loadReprintOrders(1);
+    }
+
+    function initReprintOrders() {
+        els.btnReprintOrders?.addEventListener('click', openReprintModal);
+        els.reprintClose?.addEventListener('click', () => els.reprintModal.close());
+        els.reprintSearchForm?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            reprintState.query = els.reprintSearch?.value.trim() || '';
+            loadReprintOrders(1);
+        });
     }
 
     function initSettings() {
@@ -845,9 +1154,10 @@
     }
 
     function init() {
+        initOrderSession();
         loadCart();
         initSettings();
-        initOrderSession();
+        initReprintOrders();
         bindEvents();
         renderCart();
         loadMenu();

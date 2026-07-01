@@ -10,12 +10,6 @@ require_once dirname(__DIR__) . '/includes/Auth.php';
 header('Content-Type: application/json; charset=utf-8');
 Auth::requireAuth();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'Método no permitido.']);
-    exit;
-}
-
 try {
     if (!file_exists(DB_PATH)) {
         http_response_code(503);
@@ -23,15 +17,46 @@ try {
         exit;
     }
 
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($input)) {
-        throw new InvalidArgumentException('Datos de pedido inválidos.');
-    }
-
     Database::initialize();
     $db = Database::getConnection();
     $menu = new MenuRepository($db);
     $orders = new OrderService($db, $menu);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $query = trim((string) ($_GET['q'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = max(5, min(50, (int) ($_GET['per_page'] ?? 15)));
+
+        if (!empty($_GET['id'])) {
+            $order = $orders->getOrder((int) $_GET['id']);
+            if (!$order) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Comanda no encontrada.']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'order' => $order], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $result = $orders->listOrders($query, $page, $perPage);
+        echo json_encode([
+            'success' => true,
+            'orders' => $result['orders'],
+            'pagination' => $result['pagination'],
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['error' => 'Método no permitido.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($input)) {
+        throw new InvalidArgumentException('Datos de pedido inválidos.');
+    }
 
     $order = $orders->createOrder($input);
 
@@ -44,5 +69,5 @@ try {
     echo json_encode(['error' => $e->getMessage()]);
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Error al guardar el pedido.']);
+    echo json_encode(['error' => 'Error al procesar la solicitud.']);
 }

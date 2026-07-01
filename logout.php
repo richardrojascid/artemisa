@@ -10,7 +10,11 @@ Auth::logout();
 <head><meta charset="UTF-8"><title>Saliendo…</title></head>
 <body>
 <script>
-sessionStorage.removeItem('artemisa_order_session');
+Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('artemisa_')) {
+        localStorage.removeItem(key);
+    }
+});
 window.location.replace('login.php');
 </script>
 </body>

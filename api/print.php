@@ -88,8 +88,16 @@ function receiptToPlainText(array $order, array $items, string $cafeName): strin
     $lines = [];
     $lines[] = strtoupper($cafeName);
     $lines[] = 'COMANDA DE PEDIDO';
+    if (!empty($order['id'])) {
+        $lines[] = 'Comanda #' . $order['id'];
+    }
     $lines[] = str_repeat('-', 32);
-    $lines[] = 'Fecha: ' . date('d/m/Y H:i');
+    $createdAt = $order['created_at'] ?? date('Y-m-d H:i:s');
+    $lines[] = 'Fecha: ' . date('d/m/Y H:i', strtotime($createdAt));
+
+    if (!empty($order['client_name'])) {
+        $lines[] = 'Cliente: ' . $order['client_name'];
+    }
 
     if (!empty($order['table_number'])) {
         $isTakeaway = strtoupper((string) $order['table_number']) === 'PL';
@@ -98,9 +106,6 @@ function receiptToPlainText(array $order, array $items, string $cafeName): strin
     if (!empty($order['waiter_name'])) {
         $isTakeaway = !empty($order['table_number']) && strtoupper((string) $order['table_number']) === 'PL';
         $lines[] = ($isTakeaway ? 'Cajero' : 'Mesero') . ': ' . $order['waiter_name'];
-    }
-    if (!empty($order['id'])) {
-        $lines[] = 'Orden #: ' . $order['id'];
     }
 
     $lines[] = str_repeat('-', 32);

@@ -130,6 +130,12 @@ class Database
         if (!in_array('include_tip', $orderColumnNames, true)) {
             $db->exec('ALTER TABLE orders ADD COLUMN include_tip INTEGER NOT NULL DEFAULT 1');
         }
+        if (!in_array('client_name', $orderColumnNames, true)) {
+            $db->exec('ALTER TABLE orders ADD COLUMN client_name TEXT');
+        }
+        if (!in_array('order_type', $orderColumnNames, true)) {
+            $db->exec('ALTER TABLE orders ADD COLUMN order_type TEXT NOT NULL DEFAULT \'servir\'');
+        }
 
         $db->exec("UPDATE categories SET name = 'Salados' WHERE name = 'Saladas'");
         $db->exec("UPDATE categories SET name = 'Helados' WHERE name = 'Heladas'");

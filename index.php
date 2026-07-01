@@ -41,6 +41,7 @@ $cafeName = $settings->getCafeName();
             </div>
             <div class="header-hero-front">
                 <div class="header-actions">
+                    <button type="button" class="btn-icon" id="btnReprintOrders" title="Buscar y reimprimir comandas">🖨️</button>
                     <a href="admin/" class="btn-icon" title="Administración">📋</a>
                     <button type="button" class="btn-icon" id="btnSettings" aria-label="Configuración">⚙️</button>
                     <a href="logout.php" class="btn-icon" title="Salir">🚪</a>
@@ -48,7 +49,9 @@ $cafeName = $settings->getCafeName();
             </div>
         </div>
         <div class="order-session-bar" id="orderSessionBar" hidden>
+            <select id="sessionSwitcher" class="session-switcher" aria-label="Seleccionar sesión"></select>
             <p class="order-session-summary" id="orderSessionSummary"></p>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnNewSession">Nueva</button>
             <button type="button" class="btn btn-secondary btn-sm" id="btnEditSession">Editar</button>
         </div>
         <div class="category-tabs" id="categoryTabs" role="tablist"></div>
@@ -122,6 +125,11 @@ $cafeName = $settings->getCafeName();
                 </label>
             </fieldset>
 
+            <div class="session-client-group">
+                <label for="sessionClientName">Cliente (opcional)</label>
+                <input type="text" id="sessionClientName" autocomplete="name" placeholder="Nombre del cliente">
+            </div>
+
             <div class="session-fields" id="sessionFieldsServir">
                 <div class="session-inline-field session-field-mesa">
                     <span class="session-field-label">Mesa</span>
@@ -144,6 +152,23 @@ $cafeName = $settings->getCafeName();
 
             <button type="submit" class="btn btn-primary btn-block session-submit">ACEPTAR</button>
         </form>
+    </dialog>
+
+    <dialog class="modal reprint-modal" id="reprintModal" aria-labelledby="reprintModalTitle">
+        <div class="reprint-modal-inner">
+            <div class="modal-header">
+                <h2 id="reprintModalTitle">Comandas — buscar y reimprimir</h2>
+                <button type="button" class="btn-icon modal-close" id="reprintClose" aria-label="Cerrar">✕</button>
+            </div>
+            <form id="reprintSearchForm" class="reprint-search">
+                <input type="search" id="reprintSearch" placeholder="ID, cliente, mesa, mesera(o), cajera(o)..." autocomplete="off">
+                <button type="submit" class="btn btn-secondary btn-sm">Buscar</button>
+            </form>
+            <div class="reprint-list-wrap" id="reprintListWrap">
+                <ul class="reprint-list" id="reprintList" aria-live="polite"></ul>
+            </div>
+            <div class="reprint-pagination" id="reprintPagination"></div>
+        </div>
     </dialog>
 
     <dialog class="modal" id="itemModal">

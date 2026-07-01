@@ -15,10 +15,20 @@ class EscPosPrinter
         $out .= self::text($cafeName . "\n");
         $out .= self::bold(false);
         $out .= self::text("COMANDA DE PEDIDO\n");
+        if (!empty($order['id'])) {
+            $out .= self::bold(true);
+            $out .= self::text('Comanda #' . $order['id'] . "\n");
+            $out .= self::bold(false);
+        }
         $out .= self::separator();
 
         $out .= self::alignLeft();
-        $out .= self::text('Fecha: ' . date('d/m/Y H:i') . "\n");
+        $createdAt = $order['created_at'] ?? date('Y-m-d H:i:s');
+        $out .= self::text('Fecha: ' . date('d/m/Y H:i', strtotime($createdAt)) . "\n");
+
+        if (!empty($order['client_name'])) {
+            $out .= self::text('Cliente: ' . $order['client_name'] . "\n");
+        }
 
         if (!empty($order['table_number'])) {
             $isTakeaway = strtoupper((string) $order['table_number']) === 'PL';
@@ -33,9 +43,6 @@ class EscPosPrinter
                 ? 'Cajero'
                 : 'Mesero';
             $out .= self::text($staffLabel . ': ' . $order['waiter_name'] . "\n");
-        }
-        if (!empty($order['id'])) {
-            $out .= self::text('Orden #: ' . $order['id'] . "\n");
         }
 
         $out .= self::separator();
