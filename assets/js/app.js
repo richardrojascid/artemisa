@@ -22,6 +22,7 @@
         confirmed: false,
     };
     let reprintState = { query: '', page: 1, pages: 1 };
+    const isAdminSession = window.APP_IS_ADMIN === true;
 
     const $ = (sel) => document.querySelector(sel);
 
@@ -983,13 +984,33 @@
     }
 
     function requireOrderSession() {
-        if (orderSession.confirmed) return true;
+        if (isAdminSession || orderSession.confirmed) return true;
         openSessionModal();
         showToast('Configure el pedido antes de continuar', 'error');
         return false;
     }
 
+    function initAdminComandasSession() {
+        orderSession = {
+            id: createSessionId(),
+            orderType: 'servir',
+            tableNumber: '',
+            staffName: 'Admin',
+            clientName: '',
+            confirmed: true,
+        };
+        if (els.orderSessionBar) {
+            els.orderSessionBar.hidden = true;
+        }
+        setSessionLocked(false);
+    }
+
     function initOrderSession() {
+        if (isAdminSession) {
+            initAdminComandasSession();
+            return;
+        }
+
         loadOrderSession();
         renderSessionSummary();
 

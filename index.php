@@ -23,7 +23,7 @@ $cafeName = $settings->getCafeName();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a1628">
+    <meta name="theme-color" content="<?= Auth::isAdmin() ? '#1c1c1c' : '#0a1628' ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title><?= htmlspecialchars($cafeName) ?> — Mesero</title>
@@ -32,7 +32,7 @@ $cafeName = $settings->getCafeName();
     <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>">
     <link rel="manifest" href="manifest.json">
 </head>
-<body class="mesero-page">
+<body class="mesero-page<?= Auth::isAdmin() ? ' admin-comandas-page' : '' ?>">
     <header class="app-header">
         <div class="header-hero">
             <img src="<?= asset_url(BRAND_LOGO_CENTRAL) ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="header-logo-central">
@@ -47,11 +47,17 @@ $cafeName = $settings->getCafeName();
                 </div>
             </div>
         </div>
+        <?php if (!Auth::isAdmin()): ?>
         <div class="order-session-bar" id="orderSessionBar" hidden>
             <p class="order-session-summary" id="orderSessionSummary"></p>
             <button type="button" class="btn btn-secondary btn-sm" id="btnNewSession">Nueva</button>
             <button type="button" class="btn btn-secondary btn-sm" id="btnEditSession">Editar</button>
         </div>
+        <?php else: ?>
+        <div class="order-session-bar" id="orderSessionBar" hidden aria-hidden="true">
+            <p class="order-session-summary" id="orderSessionSummary"></p>
+        </div>
+        <?php endif; ?>
         <div class="category-tabs" id="categoryTabs" role="tablist"></div>
     </header>
 
@@ -250,6 +256,7 @@ $cafeName = $settings->getCafeName();
         window.APP_CAFE_NAME = <?= json_encode($cafeName, JSON_UNESCAPED_UNICODE) ?>;
         window.APP_TIP_PERCENT = <?= json_encode($settings->getTipPercent()) ?>;
         window.APP_BRAND_LOGO = <?= json_encode(BRAND_LOGO_CIRCULAR, JSON_UNESCAPED_UNICODE) ?>;
+        window.APP_IS_ADMIN = <?= Auth::isAdmin() ? 'true' : 'false' ?>;
     </script>
     <script src="assets/js/printer.js"></script>
     <script src="<?= asset_url('assets/js/app.js') ?>"></script>
