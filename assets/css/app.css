@@ -63,44 +63,35 @@ body {
 
 .header-hero {
     position: relative;
-    min-height: clamp(148px, 34vw, 228px);
-    overflow: visible;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 0;
+    padding: 6px 12px 8px;
+    overflow: hidden;
     background: linear-gradient(180deg, var(--color-artemisa-navy-deep) 0%, var(--color-surface) 100%);
 }
 
-.header-hero::after {
-    content: '';
-    position: absolute;
-    left: calc(clamp(12px, 3vw, 28px) + clamp(96px, 24vw, 156px) + clamp(10px, 2.5vw, 24px));
-    top: 8px;
-    bottom: -24px;
-    width: min(calc(100% - clamp(108px, 30vw, 208px)), 72vw, 820px);
-    background-image: var(--header-banner-url);
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: left center;
-    pointer-events: none;
-    z-index: 1;
-}
-
 .header-brand-bg {
-    position: absolute;
-    inset: 0;
-    bottom: -28px;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 10px clamp(12px, 3vw, 28px) 36px;
+    gap: clamp(8px, 2vw, 16px);
+    flex: 1;
+    min-width: 0;
+    padding: 0;
     pointer-events: none;
-    z-index: 2;
+    z-index: 1;
 }
 
 .header-logo-circular {
     display: block;
     flex-shrink: 0;
     width: auto;
-    height: clamp(96px, 24vw, 156px);
-    max-height: 168px;
+    height: clamp(64px, 16vw, 96px);
+    max-height: 100px;
     object-fit: contain;
     border-radius: 50%;
     filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
@@ -108,9 +99,15 @@ body {
 
 .header-logo-banner {
     display: block;
+    flex: 1;
+    min-width: 0;
     width: auto;
+    height: clamp(44px, 12vw, 84px);
+    max-height: 92px;
+    max-width: min(72vw, 680px);
     object-fit: contain;
     object-position: left center;
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.35));
 }
 
 .header-hero-front {
@@ -120,9 +117,10 @@ body {
     flex-direction: column;
     justify-content: flex-start;
     align-items: flex-end;
-    min-height: 88px;
-    padding: 6px 12px 8px;
-    gap: 6px;
+    flex-shrink: 0;
+    min-height: 0;
+    padding: 0;
+    gap: 0;
     background: transparent;
 }
 
@@ -237,7 +235,7 @@ body {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    padding: 8px 16px 10px;
+    padding: 6px 16px 8px;
     background: var(--color-surface-2);
     border-bottom: 1px solid var(--color-border);
     position: relative;
@@ -616,8 +614,8 @@ body.session-locked .cart-panel {
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding: 16px 16px 12px;
-    margin-top: 6px;
+    padding: 10px 16px 10px;
+    margin-top: 0;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
     position: relative;
@@ -625,8 +623,8 @@ body.session-locked .cart-panel {
 }
 
 .order-session-bar + .category-tabs {
-    padding-top: 18px;
-    margin-top: 10px;
+    padding-top: 12px;
+    margin-top: 4px;
     border-top: 1px solid transparent;
 }
 
@@ -656,7 +654,7 @@ body.session-locked .cart-panel {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 12px;
-    padding: 16px;
+    padding: 12px 16px 16px;
     max-width: 1200px;
     margin: 0 auto;
     align-items: stretch;
@@ -1268,36 +1266,24 @@ body.session-locked .cart-panel {
     }
 
     body.mesero-page .header-hero {
-        min-height: clamp(156px, 18vw, 236px);
-    }
-
-    body.mesero-page .header-hero-front {
-        min-height: 96px;
         padding: 8px 20px 10px;
     }
 
     body.mesero-page .header-logo-circular {
-        height: clamp(120px, 12vw, 172px);
-        max-height: 180px;
+        height: clamp(72px, 8vw, 104px);
+        max-height: 112px;
     }
 
-    body.mesero-page .header-hero::after {
-        left: calc(clamp(12px, 3vw, 28px) + clamp(120px, 12vw, 172px) + clamp(10px, 2.5vw, 24px));
-        width: min(calc(100% - clamp(140px, 16vw, 220px)), 58vw, 820px);
-    }
-
-    body.mesero-page .header-brand-bg {
-        padding-bottom: 14px;
+    body.mesero-page .header-logo-banner {
+        height: clamp(52px, 6vw, 92px);
+        max-height: 100px;
+        max-width: min(680px, 50vw);
     }
 }
 
 @media (min-width: 600px) and (max-width: 959px) {
-    .header-hero {
-        min-height: clamp(140px, 30vw, 200px);
-    }
-
-    .header-hero-front {
-        min-height: 84px;
+    .header-logo-banner {
+        max-width: min(68vw, 560px);
     }
 }
 
@@ -1314,27 +1300,20 @@ body.session-locked .cart-panel {
 
 @media (max-width: 380px) {
     .header-hero {
-        min-height: 112px;
-    }
-
-    .header-hero-front {
-        min-height: 72px;
         padding: 4px 10px 6px;
     }
 
     .header-brand-bg {
-        padding: 6px 10px 8px;
-    }
-
-    .header-hero::after {
-        left: calc(10px + 72px + 8px);
-        width: min(calc(100% - 98px), 62vw);
-        top: 6px;
-        bottom: -16px;
+        gap: 6px;
     }
 
     .header-logo-circular {
-        height: 72px;
+        height: 60px;
+    }
+
+    .header-logo-banner {
+        height: 40px;
+        max-width: 58vw;
     }
 
     .cart-toggle {
