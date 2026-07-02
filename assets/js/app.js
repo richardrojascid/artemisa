@@ -438,18 +438,22 @@
 
         cards.forEach((card) => {
             card.style.minHeight = '';
+            card.style.height = 'auto';
+            card.style.alignSelf = 'start';
         });
 
         requestAnimationFrame(() => {
             const maxHeight = Math.max(
                 0,
-                ...cards.map((card) => card.getBoundingClientRect().height)
+                ...cards.map((card) => card.offsetHeight)
             );
             if (maxHeight <= 0) return;
 
-            const heightPx = `${Math.ceil(maxHeight)}px`;
+            const heightPx = `${maxHeight}px`;
             cards.forEach((card) => {
                 card.style.minHeight = heightPx;
+                card.style.height = '';
+                card.style.alignSelf = 'stretch';
             });
         });
     }
@@ -1289,6 +1293,12 @@
         bindEvents();
         renderCart();
         loadMenu();
+
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(equalizeMenuCardHeights, 120);
+        });
     }
 
     if (document.readyState === 'loading') {

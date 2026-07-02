@@ -85,8 +85,8 @@ body {
     display: block;
     flex-shrink: 0;
     width: auto;
-    height: clamp(108px, 28vw, 196px);
-    max-height: 208px;
+    height: clamp(96px, 24vw, 156px);
+    max-height: 168px;
     object-fit: contain;
     border-radius: 50%;
     filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
@@ -616,6 +616,12 @@ body.session-locked .cart-panel {
     z-index: 4;
 }
 
+.order-session-bar + .category-tabs {
+    padding-top: 18px;
+    margin-top: 10px;
+    border-top: 1px solid transparent;
+}
+
 .category-tabs::-webkit-scrollbar { display: none; }
 
 .tab-btn {
@@ -666,14 +672,16 @@ body.session-locked .cart-panel {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    padding: 10px 12px;
+    padding: 10px 12px 12px;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
     gap: 4px;
     min-height: 0;
     height: 100%;
+    box-sizing: border-box;
     overflow: hidden;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -718,8 +726,8 @@ body.session-locked .cart-panel {
 }
 
 .menu-card .price {
-    margin: auto 0 0;
-    padding-top: 4px;
+    margin: 6px 0 0;
+    padding: 0;
     flex-shrink: 0;
     font-size: clamp(0.85rem, 2.4vw, 1rem);
     font-weight: 700;
@@ -1261,8 +1269,8 @@ body.session-locked .cart-panel {
     }
 
     body.mesero-page .header-logo-circular {
-        height: clamp(128px, 14vw, 208px);
-        max-height: 216px;
+        height: clamp(120px, 12vw, 172px);
+        max-height: 180px;
     }
 
     body.mesero-page .header-logo-banner {
