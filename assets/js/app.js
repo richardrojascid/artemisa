@@ -432,6 +432,28 @@
         });
     }
 
+    function equalizeMenuCardHeights() {
+        const cards = [...els.menuGrid.querySelectorAll('.menu-card')];
+        if (!cards.length) return;
+
+        cards.forEach((card) => {
+            card.style.minHeight = '';
+        });
+
+        requestAnimationFrame(() => {
+            const maxHeight = Math.max(
+                0,
+                ...cards.map((card) => card.getBoundingClientRect().height)
+            );
+            if (maxHeight <= 0) return;
+
+            const heightPx = `${Math.ceil(maxHeight)}px`;
+            cards.forEach((card) => {
+                card.style.minHeight = heightPx;
+            });
+        });
+    }
+
     function renderMenu() {
         const category = menu.find(c => c.id === selectedCategoryId);
         if (!category) return;
@@ -440,7 +462,7 @@
             <article class="menu-card" data-item-id="${item.id}" tabindex="0" role="button"
                      aria-label="${escapeHtml(formatMenuItemName(item))} ${formatItemPrice(item)}">
                 <h3>${escapeHtml(formatMenuItemName(item))}</h3>
-                ${item.description ? `<p class="description">${escapeHtml(item.description)}</p>` : ''}
+                <p class="description">${item.description ? escapeHtml(item.description) : ''}</p>
                 <p class="price">${formatItemPrice(item)}</p>
             </article>
         `).join('');
@@ -455,6 +477,8 @@
                 }
             });
         });
+
+        equalizeMenuCardHeights();
     }
 
     function findMenuItem(id) {
@@ -796,19 +820,20 @@
     }
 
     function updateSessionFieldsVisibility() {
-        const type = getSelectedOrderType();
-        const isServir = type === 'servir';
+        const isServir = getSelectedOrderType() === 'servir';
         if (els.sessionStaffServir) els.sessionStaffServir.hidden = !isServir;
         if (els.sessionStaffLlevar) els.sessionStaffLlevar.hidden = isServir;
+    }
 
-        if (els.sessionTable) {
-            if (!isServir) {
-                if (!els.sessionTable.value.trim()) {
-                    els.sessionTable.value = 'PL';
-                }
-            } else if (els.sessionTable.value.trim().toUpperCase() === 'PL') {
-                els.sessionTable.value = '';
+    function onOrderTypeChange() {
+        const type = getSelectedOrderType();
+        updateSessionFieldsVisibility();
+        if (type === 'llevar') {
+            if (els.sessionTable) {
+                els.sessionTable.value = 'PL';
             }
+        } else if (els.sessionTable?.value.trim().toUpperCase() === 'PL') {
+            els.sessionTable.value = '';
         }
     }
 
@@ -826,7 +851,7 @@
             els.sessionCashier.value = orderSession.orderType === 'llevar' ? (orderSession.staffName || '') : '';
         }
         updateSessionFieldsVisibility();
-        if (orderSession.orderType === 'llevar' && els.sessionTable && !els.sessionTable.value.trim()) {
+        if (orderSession.orderType === 'llevar' && els.sessionTable && !orderSession.tableNumber) {
             els.sessionTable.value = 'PL';
         }
         if (els.sessionClientName) els.sessionClientName.value = orderSession.clientName || '';
@@ -949,7 +974,7 @@
         renderSessionSummary();
 
         getOrderTypeInputs().forEach((input) => {
-            input.addEventListener('change', updateSessionFieldsVisibility);
+            input.addEventListener('change', onOrderTypeChange);
         });
 
         els.sessionForm?.addEventListener('submit', (e) => {
