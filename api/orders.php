@@ -5,6 +5,8 @@ require_once dirname(__DIR__) . '/includes/config.php';
 require_once dirname(__DIR__) . '/includes/Database.php';
 require_once dirname(__DIR__) . '/includes/MenuRepository.php';
 require_once dirname(__DIR__) . '/includes/OrderService.php';
+require_once dirname(__DIR__) . '/includes/Settings.php';
+require_once dirname(__DIR__) . '/includes/OrderNotifier.php';
 require_once dirname(__DIR__) . '/includes/Auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -20,7 +22,8 @@ try {
     Database::initialize();
     $db = Database::getConnection();
     $menu = new MenuRepository($db);
-    $orders = new OrderService($db, $menu);
+    $settings = new Settings($db);
+    $orders = new OrderService($db, $menu, $settings);
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $query = trim((string) ($_GET['q'] ?? ''));
@@ -60,9 +63,21 @@ try {
 
     $order = $orders->createOrder($input);
 
+    $emailResult = null;
+    try {
+        $emailResult = OrderNotifier::sendOrderEmail($order, $settings);
+    } catch (Throwable $mailError) {
+        $emailResult = [
+            'sent' => false,
+            'error' => $mailError->getMessage(),
+            'to' => ORDER_NOTIFY_EMAIL,
+        ];
+    }
+
     echo json_encode([
         'success' => true,
         'order' => $order,
+        'email' => $emailResult,
     ], JSON_UNESCAPED_UNICODE);
 } catch (InvalidArgumentException $e) {
     http_response_code(400);

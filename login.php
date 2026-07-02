@@ -61,9 +61,9 @@ $cafeName = $settings->getCafeName();
         <?php endif; ?>
 
         <form method="post" class="pin-form" id="pinForm">
-            <label for="pin" class="sr-only">PIN o clave de acceso</label>
+            <label for="pin" class="sr-only">PIN de acceso</label>
             <input type="password" id="pin" name="pin" autocomplete="off"
-                   maxlength="32" placeholder="PIN del personal o clave admin" required autofocus>
+                   maxlength="32" placeholder="PIN DE ACCESO" required autofocus>
             <button type="submit" class="btn btn-primary btn-block">Entrar</button>
         </form>
 

@@ -22,7 +22,6 @@
         confirmed: false,
     };
     let reprintState = { query: '', page: 1, pages: 1 };
-    const isAdminSession = window.APP_IS_ADMIN === true;
 
     const $ = (sel) => document.querySelector(sel);
 
@@ -784,9 +783,17 @@
             try {
                 const printResult = await ThermalPrinter.printOrder(data.order, settings);
                 const methodLabels = { bluetooth: 'Bluetooth', browser: 'navegador', network: 'red' };
-                showToast(`Comanda #${data.order.id} enviada e impresa (${methodLabels[printResult.method] || 'ok'})`);
+                let toastMsg = `Comanda #${data.order.id} enviada e impresa (${methodLabels[printResult.method] || 'ok'})`;
+                if (data.email?.sent) {
+                    toastMsg += ' · Correo enviado';
+                }
+                showToast(toastMsg);
             } catch (printErr) {
-                showToast('Pedido guardado. Impresión: ' + printErr.message, 'error');
+                let toastMsg = 'Pedido guardado. Impresión: ' + printErr.message;
+                if (data.email?.sent) {
+                    toastMsg += ' · Correo enviado';
+                }
+                showToast(toastMsg, data.email?.sent ? 'success' : 'error');
             }
 
             cart = [];
@@ -984,33 +991,13 @@
     }
 
     function requireOrderSession() {
-        if (isAdminSession || orderSession.confirmed) return true;
+        if (orderSession.confirmed) return true;
         openSessionModal();
         showToast('Configure el pedido antes de continuar', 'error');
         return false;
     }
 
-    function initAdminComandasSession() {
-        orderSession = {
-            id: createSessionId(),
-            orderType: 'servir',
-            tableNumber: '',
-            staffName: 'Admin',
-            clientName: '',
-            confirmed: true,
-        };
-        if (els.orderSessionBar) {
-            els.orderSessionBar.hidden = true;
-        }
-        setSessionLocked(false);
-    }
-
     function initOrderSession() {
-        if (isAdminSession) {
-            initAdminComandasSession();
-            return;
-        }
-
         loadOrderSession();
         renderSessionSummary();
 

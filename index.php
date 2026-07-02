@@ -47,17 +47,11 @@ $cafeName = $settings->getCafeName();
                 </div>
             </div>
         </div>
-        <?php if (!Auth::isAdmin()): ?>
         <div class="order-session-bar" id="orderSessionBar" hidden>
             <p class="order-session-summary" id="orderSessionSummary"></p>
             <button type="button" class="btn btn-secondary btn-sm" id="btnNewSession">Nueva</button>
             <button type="button" class="btn btn-secondary btn-sm" id="btnEditSession">Editar</button>
         </div>
-        <?php else: ?>
-        <div class="order-session-bar" id="orderSessionBar" hidden aria-hidden="true">
-            <p class="order-session-summary" id="orderSessionSummary"></p>
-        </div>
-        <?php endif; ?>
         <div class="category-tabs" id="categoryTabs" role="tablist"></div>
     </header>
 

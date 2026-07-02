@@ -12,8 +12,9 @@ define('PRINTER_HOST', '192.168.1.100');
 define('PRINTER_PORT', 9100);
 define('PRINTER_TIMEOUT', 5);
 
-// Correo para reportes de ventas
+// Correo para reportes de ventas y prueba de comandas
 define('REPORT_EMAIL_DEFAULT', 'richardrojas.cid@gmail.com');
+define('ORDER_NOTIFY_EMAIL', 'richardrojas.cid@gmail.com');
 define('MAIL_FROM', 'no-reply@tudominio.com'); // Cambia por tu dominio en Hostgator
 define('MAIL_FROM_NAME', APP_NAME);
 
