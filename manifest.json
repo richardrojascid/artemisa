@@ -10,7 +10,7 @@
     "lang": "es",
     "icons": [
         {
-            "src": "assets/images/logo-artemisa-circular.png",
+            "src": "assets/images/artemisa-logo-central.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"

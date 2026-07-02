@@ -27,18 +27,15 @@ $cafeName = $settings->getCafeName();
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title><?= htmlspecialchars($cafeName) ?> — Mesero</title>
-    <link rel="icon" type="image/png" href="<?= BRAND_LOGO_CIRCULAR ?>">
-    <link rel="apple-touch-icon" href="<?= BRAND_LOGO_CIRCULAR ?>">
+    <link rel="icon" type="image/png" href="<?= BRAND_LOGO_CENTRAL ?>">
+    <link rel="apple-touch-icon" href="<?= BRAND_LOGO_CENTRAL ?>">
     <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>">
     <link rel="manifest" href="manifest.json">
 </head>
 <body class="mesero-page">
     <header class="app-header">
         <div class="header-hero">
-            <div class="header-brand-bg" aria-hidden="true">
-                <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="header-logo-circular">
-                <img src="<?= asset_url(BRAND_LOGO_BANNER) ?>" alt="" class="header-logo-banner">
-            </div>
+            <img src="<?= asset_url(BRAND_LOGO_CENTRAL) ?>" alt="<?= htmlspecialchars($cafeName) ?>" class="header-logo-central">
             <div class="header-hero-front">
                 <div class="header-actions">
                     <button type="button" class="btn-icon" id="btnReprintOrders" title="Buscar y reimprimir comandas">🖨️</button>
@@ -107,7 +104,7 @@ $cafeName = $settings->getCafeName();
     <dialog class="modal session-modal" id="sessionModal" aria-labelledby="sessionModalTitle">
         <form id="sessionForm" class="session-form">
             <div class="session-modal-brand">
-                <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="session-modal-logo" width="120" height="120">
+                <img src="<?= asset_url(BRAND_LOGO_CENTRAL) ?>" alt="" class="session-modal-logo" width="160" height="160">
                 <h2 id="sessionModalTitle" class="session-modal-title"><?= htmlspecialchars($cafeName) ?></h2>
                 <p class="session-modal-welcome">Bienvenido — configure el pedido para comenzar</p>
             </div>

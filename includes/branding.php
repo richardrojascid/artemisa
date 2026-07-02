@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+const BRAND_LOGO_CENTRAL = 'assets/images/artemisa-logo-central.png';
 const BRAND_LOGO_CIRCULAR = 'assets/images/logo-artemisa-circular.png';
 const BRAND_LOGO_BANNER = 'assets/images/logo-artemisa-banner.png';
 
