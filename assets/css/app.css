@@ -11,6 +11,7 @@
     --color-success: #4caf7a;
     --color-artemisa-navy: #1a4a7a;
     --color-artemisa-navy-deep: #0e2a4a;
+    --color-logo-navy: #01132f;
     --color-border: rgba(232, 184, 74, 0.2);
     --radius: 12px;
     --radius-sm: 8px;
@@ -63,30 +64,26 @@ body {
 
 .header-hero {
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
     min-height: 0;
-    padding: 8px 52px 10px 12px;
+    padding: 0 48px 0 0;
     overflow: hidden;
-    background: linear-gradient(180deg, var(--color-artemisa-navy-deep) 0%, var(--color-surface) 100%);
+    background-color: var(--color-logo-navy);
 }
 
 .header-logo-central {
     display: block;
-    width: auto;
-    height: clamp(72px, 18vw, 112px);
-    max-height: 120px;
-    max-width: min(88vw, 360px);
+    width: 100%;
+    height: auto;
+    max-height: clamp(88px, 24vw, 148px);
     object-fit: contain;
     object-position: center center;
-    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.35));
 }
 
 .header-hero-front {
     position: absolute;
-    top: 6px;
-    right: 8px;
+    top: 8px;
+    right: 10px;
     z-index: 2;
     display: flex;
     flex-direction: column;
@@ -113,9 +110,9 @@ body {
 }
 
 .header-actions .btn-icon {
-    color: var(--color-artemisa-navy);
-    filter: brightness(1.4) saturate(1.2);
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
+    color: var(--color-accent);
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.55));
+    text-shadow: none;
 }
 
 .header-actions a.btn-icon {
@@ -1241,19 +1238,17 @@ body.session-locked .cart-panel {
     }
 
     body.mesero-page .header-hero {
-        padding: 10px 64px 12px 20px;
+        padding-right: 72px;
     }
 
     body.mesero-page .header-logo-central {
-        height: clamp(84px, 9vw, 128px);
-        max-height: 136px;
-        max-width: min(420px, 42vw);
+        max-height: clamp(96px, 11vw, 160px);
     }
 }
 
 @media (min-width: 600px) and (max-width: 959px) {
     .header-logo-central {
-        max-width: min(78vw, 340px);
+        max-height: clamp(92px, 20vw, 140px);
     }
 }
 
@@ -1270,12 +1265,11 @@ body.session-locked .cart-panel {
 
 @media (max-width: 380px) {
     .header-hero {
-        padding: 6px 44px 8px 8px;
+        padding-right: 44px;
     }
 
     .header-logo-central {
-        height: 64px;
-        max-width: 78vw;
+        max-height: 76px;
     }
 
     .cart-toggle {
