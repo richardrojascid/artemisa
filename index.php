@@ -129,19 +129,16 @@ $cafeName = $settings->getCafeName();
                 <input type="text" id="sessionClientName" autocomplete="name" placeholder="Nombre del cliente">
             </div>
 
-            <div class="session-fields" id="sessionFieldsServir">
+            <div class="session-fields" id="sessionFields">
                 <div class="session-inline-field session-field-mesa">
                     <span class="session-field-label">Mesa</span>
-                    <input type="text" id="sessionTable" inputmode="numeric" autocomplete="off" placeholder="5">
+                    <input type="text" id="sessionTable" inputmode="text" autocomplete="off" placeholder="5">
                 </div>
-                <div class="session-inline-field session-field-staff">
+                <div class="session-inline-field session-field-staff" id="sessionStaffServir">
                     <span class="session-field-label">Mesera(o)</span>
                     <input type="text" id="sessionWaiter" autocomplete="name" placeholder="Nombre">
                 </div>
-            </div>
-
-            <div class="session-fields session-fields-llevar" id="sessionFieldsLlevar" hidden>
-                <div class="session-inline-field session-field-staff-full">
+                <div class="session-inline-field session-field-staff" id="sessionStaffLlevar" hidden>
                     <span class="session-field-label">Cajera(o)</span>
                     <input type="text" id="sessionCashier" autocomplete="name" placeholder="Nombre">
                 </div>

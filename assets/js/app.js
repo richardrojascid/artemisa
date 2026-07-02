@@ -69,8 +69,9 @@
         printerStatus: $('#printerStatus'),
         sessionModal: $('#sessionModal'),
         sessionForm: $('#sessionForm'),
-        sessionFieldsServir: $('#sessionFieldsServir'),
-        sessionFieldsLlevar: $('#sessionFieldsLlevar'),
+        sessionFields: $('#sessionFields'),
+        sessionStaffServir: $('#sessionStaffServir'),
+        sessionStaffLlevar: $('#sessionStaffLlevar'),
         sessionTable: $('#sessionTable'),
         sessionWaiter: $('#sessionWaiter'),
         sessionCashier: $('#sessionCashier'),
@@ -797,18 +798,37 @@
     function updateSessionFieldsVisibility() {
         const type = getSelectedOrderType();
         const isServir = type === 'servir';
-        if (els.sessionFieldsServir) els.sessionFieldsServir.hidden = !isServir;
-        if (els.sessionFieldsLlevar) els.sessionFieldsLlevar.hidden = isServir;
+        if (els.sessionStaffServir) els.sessionStaffServir.hidden = !isServir;
+        if (els.sessionStaffLlevar) els.sessionStaffLlevar.hidden = isServir;
+
+        if (els.sessionTable) {
+            if (!isServir) {
+                if (!els.sessionTable.value.trim()) {
+                    els.sessionTable.value = 'PL';
+                }
+            } else if (els.sessionTable.value.trim().toUpperCase() === 'PL') {
+                els.sessionTable.value = '';
+            }
+        }
     }
 
     function fillSessionForm() {
         getOrderTypeInputs().forEach((input) => {
             input.checked = input.value === orderSession.orderType;
         });
+        if (els.sessionTable) {
+            els.sessionTable.value = orderSession.tableNumber || '';
+        }
+        if (els.sessionWaiter) {
+            els.sessionWaiter.value = orderSession.orderType === 'servir' ? (orderSession.staffName || '') : '';
+        }
+        if (els.sessionCashier) {
+            els.sessionCashier.value = orderSession.orderType === 'llevar' ? (orderSession.staffName || '') : '';
+        }
         updateSessionFieldsVisibility();
-        if (els.sessionTable) els.sessionTable.value = orderSession.tableNumber || '';
-        if (els.sessionWaiter) els.sessionWaiter.value = orderSession.orderType === 'servir' ? (orderSession.staffName || '') : '';
-        if (els.sessionCashier) els.sessionCashier.value = orderSession.orderType === 'llevar' ? (orderSession.staffName || '') : '';
+        if (orderSession.orderType === 'llevar' && els.sessionTable && !els.sessionTable.value.trim()) {
+            els.sessionTable.value = 'PL';
+        }
         if (els.sessionClientName) els.sessionClientName.value = orderSession.clientName || '';
         if (els.sessionError) {
             els.sessionError.hidden = true;
@@ -826,7 +846,7 @@
 
         let text;
         if (orderSession.orderType === 'llevar') {
-            text = `Para llevar · PL · Cajera(o): ${orderSession.staffName}`;
+            text = `Para llevar · Mesa ${orderSession.tableNumber || 'PL'} · Cajera(o): ${orderSession.staffName}`;
         } else {
             text = `Para servir · Mesa ${orderSession.tableNumber} · Mesera(o): ${orderSession.staffName}`;
         }
@@ -859,13 +879,19 @@
 
     function validateSessionForm() {
         const type = getSelectedOrderType();
+        const mesa = els.sessionTable?.value.trim() || '';
+        if (!mesa) {
+            return type === 'llevar'
+                ? 'Ingresa la mesa (use PL para para llevar).'
+                : 'Ingresa el número de mesa.';
+        }
+
         if (type === 'servir') {
-            const mesa = els.sessionTable?.value.trim() || '';
             const mesero = els.sessionWaiter?.value.trim() || '';
-            if (!mesa) return 'Ingresa el número de mesa.';
             if (!mesero) return 'Ingresa el nombre de la mesera(o).';
             return null;
         }
+
         const cajero = els.sessionCashier?.value.trim() || '';
         if (!cajero) return 'Ingresa el nombre de la cajera(o).';
         return null;
@@ -884,11 +910,10 @@
 
         orderSession.orderType = type;
         orderSession.clientName = els.sessionClientName?.value.trim() || '';
+        orderSession.tableNumber = els.sessionTable.value.trim();
         if (type === 'servir') {
-            orderSession.tableNumber = els.sessionTable.value.trim();
             orderSession.staffName = els.sessionWaiter.value.trim();
         } else {
-            orderSession.tableNumber = 'PL';
             orderSession.staffName = els.sessionCashier.value.trim();
         }
         if (!orderSession.id) {
@@ -905,7 +930,7 @@
 
     function getSessionTableForOrder() {
         if (!orderSession.confirmed) return null;
-        return orderSession.orderType === 'llevar' ? 'PL' : orderSession.tableNumber;
+        return orderSession.tableNumber?.trim() || null;
     }
 
     function getSessionStaffForOrder() {
