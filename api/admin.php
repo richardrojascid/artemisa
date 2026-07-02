@@ -9,7 +9,7 @@ require_once dirname(__DIR__) . '/includes/Settings.php';
 require_once dirname(__DIR__) . '/includes/Auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
-Auth::requireAuth();
+Auth::requireAdmin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

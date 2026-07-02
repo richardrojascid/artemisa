@@ -61,9 +61,9 @@ $cafeName = $settings->getCafeName();
         <?php endif; ?>
 
         <form method="post" class="pin-form" id="pinForm">
-            <label for="pin" class="sr-only">PIN de acceso</label>
-            <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
-                   maxlength="8" placeholder="Ingresa tu PIN" autocomplete="off" required autofocus>
+            <label for="pin" class="sr-only">PIN o clave de acceso</label>
+            <input type="password" id="pin" name="pin" autocomplete="off"
+                   maxlength="32" placeholder="PIN del personal o clave admin" required autofocus>
             <button type="submit" class="btn btn-primary btn-block">Entrar</button>
         </form>
 
@@ -85,7 +85,7 @@ $cafeName = $settings->getCafeName();
             if (!key) return;
             if (key === '⌫') {
                 pinInput.value = pinInput.value.slice(0, -1);
-            } else if (pinInput.value.length < 8) {
+            } else if (pinInput.value.length < 32) {
                 pinInput.value += key;
             }
         });

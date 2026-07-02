@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 class Auth
 {
+    private const ADMIN_ACCESS_KEY = '15587880-arT';
+
     public static function startSession(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -20,14 +22,44 @@ class Auth
 
     public static function login(string $pin, Settings $settings): bool
     {
-        if (!$settings->verifyPin($pin)) {
+        $isAdmin = self::verifyAdminAccess($pin);
+        if (!$isAdmin && !$settings->verifyPin($pin)) {
             return false;
         }
         self::startSession();
         session_regenerate_id(true);
         $_SESSION['authenticated'] = true;
+        $_SESSION['is_admin'] = $isAdmin;
         $_SESSION['login_at'] = time();
         return true;
+    }
+
+    public static function verifyAdminAccess(string $password): bool
+    {
+        return hash_equals(self::ADMIN_ACCESS_KEY, $password);
+    }
+
+    public static function isAdmin(): bool
+    {
+        self::startSession();
+        return !empty($_SESSION['is_admin']);
+    }
+
+    public static function requireAdmin(): void
+    {
+        self::requireAuth();
+        if (!self::isAdmin()) {
+            if (self::isApiRequest()) {
+                http_response_code(403);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error' => 'Acceso de administrador requerido.']);
+                exit;
+            }
+            $script = $_SERVER['SCRIPT_NAME'] ?? '';
+            $redirect = str_contains($script, '/admin/') ? '../index.php' : 'index.php';
+            header('Location: ' . $redirect);
+            exit;
+        }
     }
 
     public static function logout(): void

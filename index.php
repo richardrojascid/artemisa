@@ -39,7 +39,9 @@ $cafeName = $settings->getCafeName();
             <div class="header-hero-front">
                 <div class="header-actions">
                     <button type="button" class="btn-icon" id="btnReprintOrders" title="Buscar y reimprimir comandas">🖨️</button>
+                    <?php if (Auth::isAdmin()): ?>
                     <a href="admin/" class="btn-icon" title="Administración">📋</a>
+                    <?php endif; ?>
                     <button type="button" class="btn-icon" id="btnSettings" aria-label="Configuración">⚙️</button>
                     <a href="logout.php" class="btn-icon" title="Salir">🚪</a>
                 </div>

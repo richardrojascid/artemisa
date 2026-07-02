@@ -13,7 +13,7 @@ if (!file_exists(DB_PATH)) {
 }
 
 Database::initialize();
-Auth::requireAuth();
+Auth::requireAdmin();
 
 $settings = new Settings(Database::getConnection());
 $cafeName = $settings->getCafeName();
