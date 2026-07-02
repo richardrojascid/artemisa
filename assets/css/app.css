@@ -517,6 +517,17 @@ body.session-locked .cart-panel {
     font-size: 0.8rem;
     line-height: 1.4;
     min-width: 0;
+    text-align: left;
+    word-break: break-word;
+}
+
+.reprint-highlight {
+    background: #f0d040;
+    color: #1a1008;
+    padding: 0 2px;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
 }
 
 .reprint-toggle-icon {
@@ -544,6 +555,11 @@ body.session-locked .cart-panel {
     border: 1px solid var(--color-border);
     max-height: 320px;
     overflow-y: auto;
+}
+
+.reprint-receipt .reprint-highlight {
+    background: #fff3a0;
+    color: #111;
 }
 
 .reprint-detail-loading,

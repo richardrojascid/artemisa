@@ -806,6 +806,22 @@
         return div.innerHTML;
     }
 
+    function highlightSearchText(text, query) {
+        const safe = escapeHtml(String(text ?? ''));
+        const term = String(query ?? '').trim();
+        if (!term) {
+            return safe;
+        }
+
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escaped})`, 'gi');
+        return safe.replace(regex, '<mark class="reprint-highlight">$1</mark>');
+    }
+
+    function getReprintSearchQuery() {
+        return els.reprintSearch?.value.trim() || reprintState.query || '';
+    }
+
     function loadOrderSession() {
         syncOrderSessionFromStore();
     }
@@ -1076,17 +1092,21 @@
             return;
         }
 
-        els.reprintList.innerHTML = orders.map((order) => `
+        els.reprintList.innerHTML = orders.map((order) => {
+            const summaryLine = buildReprintSummaryLine(order);
+            const highlightedLine = highlightSearchText(summaryLine, getReprintSearchQuery());
+            return `
             <li class="reprint-item" data-order-id="${order.id}">
                 <button type="button" class="reprint-item-toggle" data-order-id="${order.id}" aria-expanded="false">
-                    <span class="reprint-summary-line">${escapeHtml(buildReprintSummaryLine(order))}</span>
+                    <span class="reprint-summary-line">${highlightedLine}</span>
                     <span class="reprint-toggle-icon" aria-hidden="true">▼</span>
                 </button>
                 <div class="reprint-detail" id="reprint-detail-${order.id}" hidden>
                     <p class="reprint-detail-loading">Cargando detalle...</p>
                 </div>
             </li>
-        `).join('');
+        `;
+        }).join('');
 
         els.reprintList.querySelectorAll('.reprint-item-toggle').forEach((btn) => {
             btn.addEventListener('click', () => toggleReprintDetail(parseInt(btn.dataset.orderId, 10), btn));
@@ -1117,8 +1137,10 @@
 
         try {
             const order = await fetchOrderDetail(orderId);
+            const receiptText = formatReceiptPreview(order);
+            const highlightedReceipt = highlightSearchText(receiptText, getReprintSearchQuery());
             detailEl.innerHTML = `
-                <pre class="reprint-receipt">${escapeHtml(formatReceiptPreview(order))}</pre>
+                <pre class="reprint-receipt">${highlightedReceipt}</pre>
                 <button type="button" class="btn btn-primary btn-sm reprint-btn" data-reprint-id="${orderId}">
                     Reimprimir comanda #${orderId}
                 </button>
@@ -1182,12 +1204,21 @@
     }
 
     function initReprintOrders() {
+        let reprintSearchTimer;
+
         els.btnReprintOrders?.addEventListener('click', openReprintModal);
         els.reprintClose?.addEventListener('click', () => els.reprintModal.close());
         els.reprintSearchForm?.addEventListener('submit', (e) => {
             e.preventDefault();
             reprintState.query = els.reprintSearch?.value.trim() || '';
             loadReprintOrders(1);
+        });
+        els.reprintSearch?.addEventListener('input', () => {
+            clearTimeout(reprintSearchTimer);
+            reprintSearchTimer = setTimeout(() => {
+                reprintState.query = els.reprintSearch?.value.trim() || '';
+                loadReprintOrders(1);
+            }, 250);
         });
     }
 
