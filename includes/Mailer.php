@@ -34,36 +34,76 @@ class Mailer
 
         $message .= "--{$boundary}--";
 
-        $sent = @mail($to, self::encodeSubject($subject), $message, implode("\r\n", $headers));
+        $additionalParams = self::buildEnvelopeSender($fromEmail);
+        $sent = @mail($to, self::encodeSubject($subject), $message, implode("\r\n", $headers), $additionalParams);
 
+        $mailError = error_get_last();
         $savedPath = null;
-        if (!$sent && !empty($attachments)) {
-            $savedPath = self::saveLocally($attachments, $subject);
+
+        if (!$sent) {
+            if (!empty($attachments)) {
+                $savedPath = self::saveAttachmentsLocally($attachments, $subject);
+            }
+            if ($savedPath === null && trim($body) !== '') {
+                $savedPath = self::savePlainBodyLocally($body, $subject);
+            }
         }
 
         return [
             'sent' => $sent,
             'saved_path' => $savedPath,
             'to' => $to,
+            'from' => $fromEmail,
+            'error' => $sent ? null : ($mailError['message'] ?? 'mail() no pudo enviar el correo'),
         ];
     }
 
-    private static function saveLocally(array $attachments, string $subject): ?string
+    private static function buildEnvelopeSender(string $fromEmail): string
+    {
+        if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+            return '';
+        }
+
+        return '-f' . $fromEmail;
+    }
+
+    private static function saveAttachmentsLocally(array $attachments, string $subject): ?string
+    {
+        $dir = self::ensureReportsDir();
+        $saved = [];
+        foreach ($attachments as $attachment) {
+            $path = $dir . '/' . self::buildReportFilename($subject, $attachment['filename']);
+            file_put_contents($path, $attachment['content']);
+            $saved[] = $path;
+        }
+
+        return $saved[0] ?? null;
+    }
+
+    private static function savePlainBodyLocally(string $body, string $subject): ?string
+    {
+        $dir = self::ensureReportsDir();
+        $path = $dir . '/' . self::buildReportFilename($subject, 'comanda.txt');
+        file_put_contents($path, $body);
+
+        return $path;
+    }
+
+    private static function ensureReportsDir(): string
     {
         $dir = DATA_PATH . '/reports';
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        $slug = preg_replace('/[^a-z0-9_-]+/i', '-', $subject);
-        $saved = [];
-        foreach ($attachments as $attachment) {
-            $path = $dir . '/' . date('Y-m-d_His') . '_' . $attachment['filename'];
-            file_put_contents($path, $attachment['content']);
-            $saved[] = $path;
-        }
+        return $dir;
+    }
 
-        return $saved[0] ?? null;
+    private static function buildReportFilename(string $subject, string $suffix): string
+    {
+        $slug = preg_replace('/[^a-z0-9_-]+/i', '-', $subject) ?: 'comanda';
+
+        return date('Y-m-d_His') . '_' . $slug . '_' . $suffix;
     }
 
     private static function encodeSubject(string $subject): string

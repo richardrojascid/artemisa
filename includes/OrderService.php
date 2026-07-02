@@ -160,8 +160,12 @@ class OrderService
                 OR IFNULL(client_name, \'\') LIKE ?
                 OR IFNULL(waiter_name, \'\') LIKE ?
                 OR IFNULL(table_number, \'\') LIKE ?
+                OR IFNULL(order_type, \'\') LIKE ?
+                OR CAST(total AS TEXT) LIKE ?
+                OR CAST(subtotal AS TEXT) LIKE ?
+                OR IFNULL(created_at, \'\') LIKE ?
             )';
-            $params = [$like, $like, $like, $like];
+            $params = [$like, $like, $like, $like, $like, $like, $like, $like];
         }
 
         $countStmt = $this->db->prepare("SELECT COUNT(*) FROM orders {$where}");

@@ -22,6 +22,7 @@
         confirmed: false,
     };
     let reprintState = { query: '', page: 1, pages: 1 };
+    let reprintOrdersCache = [];
 
     const $ = (sel) => document.querySelector(sel);
 
@@ -786,12 +787,20 @@
                 let toastMsg = `Comanda #${data.order.id} enviada e impresa (${methodLabels[printResult.method] || 'ok'})`;
                 if (data.email?.sent) {
                     toastMsg += ' · Correo enviado';
+                } else if (data.email?.saved_path) {
+                    toastMsg += ' · Correo guardado en servidor (mail no disponible)';
+                } else if (data.email) {
+                    toastMsg += ' · Correo no enviado';
                 }
                 showToast(toastMsg);
             } catch (printErr) {
                 let toastMsg = 'Pedido guardado. Impresión: ' + printErr.message;
                 if (data.email?.sent) {
                     toastMsg += ' · Correo enviado';
+                } else if (data.email?.saved_path) {
+                    toastMsg += ' · Correo guardado en servidor (mail no disponible)';
+                } else if (data.email) {
+                    toastMsg += ' · Correo no enviado (configura MAIL_FROM en Hostgator)';
                 }
                 showToast(toastMsg, data.email?.sent ? 'success' : 'error');
             }
@@ -1040,17 +1049,56 @@
         }
     }
 
-    async function loadReprintOrders(page = 1) {
-        reprintState.page = page;
-        const params = new URLSearchParams({
-            page: String(page),
-            per_page: '15',
-        });
-        if (reprintState.query) {
-            params.set('q', reprintState.query);
+    function orderMatchesReprintQuery(order, query) {
+        const term = String(query || '').trim();
+        if (!term) return true;
+        return buildReprintSummaryLine(order).toLowerCase().includes(term.toLowerCase());
+    }
+
+    function filterReprintOrders(orders, query) {
+        return (orders || []).filter((order) => orderMatchesReprintQuery(order, query));
+    }
+
+    function renderReprintSearchMeta(filteredCount, query, totalInCache = 0) {
+        if (!els.reprintPagination) return;
+
+        const term = String(query || '').trim();
+        if (!term) {
+            return;
         }
 
-        els.reprintList.innerHTML = '<li class="reprint-empty">Cargando comandas...</li>';
+        els.reprintPagination.innerHTML = filteredCount > 0
+            ? `<span class="reprint-page-info">${filteredCount} comanda(s) con coincidencias</span>`
+            : `<span class="reprint-page-info">Sin coincidencias para "${escapeHtml(term)}"</span>`;
+    }
+
+    function applyReprintSearchInstant() {
+        const query = getReprintSearchQuery();
+        reprintState.query = query;
+        const filtered = filterReprintOrders(reprintOrdersCache, query);
+        renderReprintList(filtered);
+        if (query) {
+            renderReprintSearchMeta(filtered.length, query, reprintOrdersCache.length);
+        }
+    }
+
+    async function loadReprintOrders(page = 1, options = {}) {
+        const query = options.query ?? getReprintSearchQuery();
+        reprintState.page = page;
+        reprintState.query = query;
+        const silent = Boolean(options.silent);
+
+        const params = new URLSearchParams({
+            page: String(page),
+            per_page: query ? '50' : '100',
+        });
+        if (query) {
+            params.set('q', query);
+        }
+
+        if (!silent) {
+            els.reprintList.innerHTML = '<li class="reprint-empty">Cargando comandas...</li>';
+        }
 
         try {
             const res = await apiFetch(`api/orders.php?${params.toString()}`);
@@ -1059,8 +1107,16 @@
                 throw new Error(data.error || 'Error al cargar comandas');
             }
             reprintState.pages = data.pagination?.pages || 1;
-            renderReprintList(data.orders || []);
-            renderReprintPagination(data.pagination || {});
+            reprintOrdersCache = data.orders || [];
+
+            const visibleOrders = filterReprintOrders(reprintOrdersCache, query);
+            renderReprintList(visibleOrders);
+
+            if (query) {
+                renderReprintSearchMeta(visibleOrders.length, query, reprintOrdersCache.length);
+            } else {
+                renderReprintPagination(data.pagination || {});
+            }
         } catch (err) {
             els.reprintList.innerHTML = `<li class="reprint-empty">${escapeHtml(err.message)}</li>`;
             els.reprintPagination.innerHTML = '';
@@ -1206,9 +1262,11 @@
     function openReprintModal() {
         reprintState.query = '';
         reprintState.page = 1;
+        reprintOrdersCache = [];
         if (els.reprintSearch) els.reprintSearch.value = '';
         els.reprintModal.showModal();
         loadReprintOrders(1);
+        setTimeout(() => els.reprintSearch?.focus(), 80);
     }
 
     function initReprintOrders() {
@@ -1218,15 +1276,15 @@
         els.reprintClose?.addEventListener('click', () => els.reprintModal.close());
         els.reprintSearchForm?.addEventListener('submit', (e) => {
             e.preventDefault();
-            reprintState.query = els.reprintSearch?.value.trim() || '';
-            loadReprintOrders(1);
+            applyReprintSearchInstant();
+            loadReprintOrders(1, { query: getReprintSearchQuery() });
         });
         els.reprintSearch?.addEventListener('input', () => {
+            applyReprintSearchInstant();
             clearTimeout(reprintSearchTimer);
             reprintSearchTimer = setTimeout(() => {
-                reprintState.query = els.reprintSearch?.value.trim() || '';
-                loadReprintOrders(1);
-            }, 250);
+                loadReprintOrders(1, { query: getReprintSearchQuery(), silent: true });
+            }, 300);
         });
     }
 
