@@ -34,10 +34,9 @@ $cafeName = $settings->getCafeName();
 </head>
 <body class="mesero-page">
     <header class="app-header">
-        <div class="header-hero">
+        <div class="header-hero" style="--header-banner-url: url('<?= htmlspecialchars(asset_url(BRAND_LOGO_BANNER), ENT_QUOTES, 'UTF-8') ?>')">
             <div class="header-brand-bg" aria-hidden="true">
                 <img src="<?= BRAND_LOGO_CIRCULAR ?>" alt="" class="header-logo-circular">
-                <img src="<?= BRAND_LOGO_BANNER ?>" alt="" class="header-logo-banner">
             </div>
             <div class="header-hero-front">
                 <div class="header-actions">

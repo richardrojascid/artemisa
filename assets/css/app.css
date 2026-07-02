@@ -68,6 +68,21 @@ body {
     background: linear-gradient(180deg, var(--color-artemisa-navy-deep) 0%, var(--color-surface) 100%);
 }
 
+.header-hero::after {
+    content: '';
+    position: absolute;
+    left: calc(clamp(12px, 3vw, 28px) + clamp(96px, 24vw, 156px) + clamp(10px, 2.5vw, 24px));
+    top: 8px;
+    bottom: -24px;
+    width: min(calc(100% - clamp(108px, 30vw, 208px)), 72vw, 820px);
+    background-image: var(--header-banner-url);
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: left center;
+    pointer-events: none;
+    z-index: 1;
+}
+
 .header-brand-bg {
     position: absolute;
     inset: 0;
@@ -75,10 +90,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: clamp(10px, 2.5vw, 24px);
     padding: 10px clamp(12px, 3vw, 28px) 36px;
     pointer-events: none;
-    z-index: 0;
+    z-index: 2;
 }
 
 .header-logo-circular {
@@ -94,15 +108,9 @@ body {
 
 .header-logo-banner {
     display: block;
-    flex: 1;
-    min-width: 0;
     width: auto;
-    height: clamp(84px, 26vw, 188px);
-    max-height: 204px;
-    max-width: min(92vw, 920px);
     object-fit: contain;
     object-position: left center;
-    filter: drop-shadow(0 3px 14px rgba(0, 0, 0, 0.35));
 }
 
 .header-hero-front {
@@ -1273,10 +1281,9 @@ body.session-locked .cart-panel {
         max-height: 180px;
     }
 
-    body.mesero-page .header-logo-banner {
-        height: clamp(92px, 10vw, 196px);
-        max-height: 208px;
-        max-width: min(920px, 58vw);
+    body.mesero-page .header-hero::after {
+        left: calc(clamp(12px, 3vw, 28px) + clamp(120px, 12vw, 172px) + clamp(10px, 2.5vw, 24px));
+        width: min(calc(100% - clamp(140px, 16vw, 220px)), 58vw, 820px);
     }
 
     body.mesero-page .header-brand-bg {
@@ -1317,16 +1324,17 @@ body.session-locked .cart-panel {
 
     .header-brand-bg {
         padding: 6px 10px 8px;
-        gap: 8px;
+    }
+
+    .header-hero::after {
+        left: calc(10px + 72px + 8px);
+        width: min(calc(100% - 98px), 62vw);
+        top: 6px;
+        bottom: -16px;
     }
 
     .header-logo-circular {
         height: 72px;
-    }
-
-    .header-logo-banner {
-        height: 48px;
-        max-width: 54vw;
     }
 
     .cart-toggle {
