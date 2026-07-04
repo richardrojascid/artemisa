@@ -1,6 +1,8 @@
 *
 !.gitkeep
 !reports/.gitkeep
+!.github/
+!.github/**
 
 # Base de datos local (se crea al instalar)
 *.db
