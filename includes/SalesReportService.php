@@ -68,6 +68,190 @@ class SalesReportService
         ];
     }
 
+    /**
+     * Ventas del día con detalle por línea de producto (para exportar a Excel).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getDailyOrdersDetailed(?string $date = null): array
+    {
+        $date = $date ?? date('Y-m-d');
+
+        $ordersStmt = $this->db->prepare("
+            SELECT id, table_number, waiter_name, client_name, order_type,
+                   subtotal, tip_amount, total, include_tip, created_at
+            FROM orders
+            WHERE date(created_at) = date(?)
+            ORDER BY datetime(created_at) ASC, id ASC
+        ");
+        $ordersStmt->execute([$date]);
+        $orders = $ordersStmt->fetchAll();
+
+        $itemsStmt = $this->db->prepare("
+            SELECT order_id, item_name, unit_price, quantity, extras_total, line_total, notes
+            FROM order_items
+            WHERE order_id = ?
+            ORDER BY id ASC
+        ");
+
+        $rows = [];
+        foreach ($orders as $order) {
+            $itemsStmt->execute([(int) $order['id']]);
+            $items = $itemsStmt->fetchAll();
+            if ($items === []) {
+                continue;
+            }
+
+            $orderType = $order['order_type'] ?? 'servir';
+            if ($orderType !== 'llevar' && strtoupper((string) ($order['table_number'] ?? '')) === 'PL') {
+                $orderType = 'llevar';
+            }
+
+            $subtotal = (float) $order['subtotal'];
+            $tipAmount = (float) ($order['tip_amount'] ?? 0);
+            $tipPercent = $subtotal > 0 && $tipAmount > 0
+                ? round(($tipAmount / $subtotal) * 100, 1)
+                : 0.0;
+
+            $createdAt = $order['created_at'] ?? '';
+            $timestamp = strtotime($createdAt) ?: time();
+
+            $mesa = '';
+            if ($orderType === 'llevar') {
+                $mesa = strtoupper((string) ($order['table_number'] ?? '')) === 'PL'
+                    ? 'PL'
+                    : (string) ($order['table_number'] ?? 'PL');
+            } elseif (!empty($order['table_number'])) {
+                $mesa = (string) $order['table_number'];
+            }
+
+            $mesero = $orderType === 'servir' ? (string) ($order['waiter_name'] ?? '') : '';
+            $cajera = $orderType === 'llevar' ? (string) ($order['waiter_name'] ?? '') : '';
+            $cliente = trim((string) ($order['client_name'] ?? ''));
+
+            foreach ($items as $item) {
+                $rows[] = [
+                    'fecha' => date('Y-m-d', $timestamp),
+                    'hora' => date('H:i', $timestamp),
+                    'comanda_id' => (int) $order['id'],
+                    'tipo_servicio' => $orderType === 'llevar' ? 'Para llevar' : 'Para servir',
+                    'mesa' => $mesa,
+                    'mesero' => $mesero,
+                    'cajera' => $cajera,
+                    'cliente' => $cliente,
+                    'producto' => (string) $item['item_name'],
+                    'cantidad' => (int) $item['quantity'],
+                    'precio_unitario' => (int) round((float) $item['unit_price']),
+                    'subtotal_linea' => (int) round((float) $item['line_total']),
+                    'notas' => trim((string) ($item['notes'] ?? '')),
+                    'subtotal_comanda' => (int) round($subtotal),
+                    'propina_porcentaje' => $tipPercent,
+                    'propina_monto' => (int) round($tipAmount),
+                    'total_comanda' => (int) round((float) $order['total']),
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    public function buildDetailedSalesExcel(array $rows, string $cafeName, string $date): string
+    {
+        $lines = [];
+        $lines[] = "\xEF\xBB\xBF";
+        $lines[] = $this->csvRow(['Reporte detallado de ventas — ' . $cafeName]);
+        $lines[] = $this->csvRow(['Fecha', $date]);
+        $lines[] = $this->csvRow(['Comandas', count(array_unique(array_column($rows, 'comanda_id')))]);
+        $lines[] = '';
+
+        $headers = [
+            'Fecha',
+            'Hora',
+            'N° Comanda',
+            'Tipo',
+            'Mesa',
+            'Mesero',
+            'Cajera',
+            'Cliente',
+            'Producto',
+            'Cantidad',
+            'Precio unitario',
+            'Subtotal línea',
+            'Notas',
+            'Subtotal comanda',
+            'Propina %',
+            'Propina monto',
+            'Total comanda',
+        ];
+        $lines[] = $this->csvRow($headers);
+
+        foreach ($rows as $row) {
+            $lines[] = $this->csvRow([
+                $row['fecha'],
+                $row['hora'],
+                $row['comanda_id'],
+                $row['tipo_servicio'],
+                $row['mesa'],
+                $row['mesero'],
+                $row['cajera'],
+                $row['cliente'],
+                $row['producto'],
+                $row['cantidad'],
+                $row['precio_unitario'],
+                $row['subtotal_linea'],
+                $row['notas'],
+                $row['subtotal_comanda'],
+                $row['propina_porcentaje'],
+                $row['propina_monto'],
+                $row['total_comanda'],
+            ]);
+        }
+
+        if ($rows !== []) {
+            $lines[] = '';
+            $lines[] = $this->csvRow([
+                'TOTALES DÍA',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                array_sum(array_column($rows, 'cantidad')),
+                '',
+                array_sum(array_column($rows, 'subtotal_linea')),
+                '',
+                $this->sumUniqueOrderField($rows, 'subtotal_comanda'),
+                '',
+                $this->sumUniqueOrderField($rows, 'propina_monto'),
+                $this->sumUniqueOrderField($rows, 'total_comanda'),
+            ]);
+        }
+
+        return implode("\r\n", $lines);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function sumUniqueOrderField(array $rows, string $field): int
+    {
+        $seen = [];
+        $sum = 0;
+        foreach ($rows as $row) {
+            $id = (int) $row['comanda_id'];
+            if (isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $sum += (int) $row[$field];
+        }
+
+        return $sum;
+    }
+
     public function buildCsv(array $report, string $cafeName): string
     {
         $lines = [];

@@ -27,6 +27,15 @@ try {
         exit;
     }
 
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['format'] ?? '') === 'excel') {
+        $rows = $reports->getDailyOrdersDetailed($date);
+        $excel = $reports->buildDetailedSalesExcel($rows, $cafeName, $date);
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="ventas_detalle_' . $date . '.xls"');
+        echo $excel;
+        exit;
+    }
+
     header('Content-Type: application/json; charset=utf-8');
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

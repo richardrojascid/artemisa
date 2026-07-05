@@ -159,6 +159,11 @@ $cafeName = $settings->getCafeName();
                 <input type="search" id="reprintSearch" placeholder="ID, cliente, mesa, mesera(o), cajera(o)..." autocomplete="off">
                 <button type="submit" class="btn btn-secondary btn-sm">Buscar</button>
             </form>
+            <div class="reprint-actions">
+                <button type="button" class="btn btn-primary btn-sm" id="btnExportDailyExcel" title="Exportar ventas del día a Excel">
+                    📊 Exportar Excel del día
+                </button>
+            </div>
             <div class="reprint-list-wrap" id="reprintListWrap">
                 <ul class="reprint-list" id="reprintList" aria-live="polite"></ul>
             </div>
