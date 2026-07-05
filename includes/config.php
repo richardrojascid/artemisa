@@ -13,9 +13,9 @@ define('PRINTER_PORT', 9100);
 define('PRINTER_TIMEOUT', 5);
 
 // Correo para reportes de ventas y prueba de comandas
-define('REPORT_EMAIL_DEFAULT', 'richardrojas.cid@gmail.com');
-define('ORDER_NOTIFY_EMAIL', 'richardrojas.cid@gmail.com');
-define('MAIL_FROM', 'no-reply@tudominio.com'); // Cambia por tu dominio en Hostgator
+define('REPORT_EMAIL_DEFAULT', 'rrc.all.services@selfie3dchile.com');
+define('ORDER_NOTIFY_EMAIL', 'rrc.all.services@selfie3dchile.com');
+define('MAIL_FROM', 'rrc.all.services@selfie3dchile.com');
 define('MAIL_FROM_NAME', APP_NAME);
 
 // Propina por defecto (%)

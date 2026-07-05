@@ -89,6 +89,7 @@
         reprintSearch: $('#reprintSearch'),
         reprintList: $('#reprintList'),
         reprintPagination: $('#reprintPagination'),
+        btnExportDailyExcel: $('#btnExportDailyExcel'),
     };
 
     const fetchOpts = { credentials: 'same-origin' };
@@ -1269,10 +1270,21 @@
         setTimeout(() => els.reprintSearch?.focus(), 80);
     }
 
+    function exportDailySalesExcel() {
+        const today = new Date();
+        const date = [
+            today.getFullYear(),
+            String(today.getMonth() + 1).padStart(2, '0'),
+            String(today.getDate()).padStart(2, '0'),
+        ].join('-');
+        window.location.href = `api/report.php?format=excel&date=${encodeURIComponent(date)}`;
+    }
+
     function initReprintOrders() {
         let reprintSearchTimer;
 
         els.btnReprintOrders?.addEventListener('click', openReprintModal);
+        els.btnExportDailyExcel?.addEventListener('click', exportDailySalesExcel);
         els.reprintClose?.addEventListener('click', () => els.reprintModal.close());
         els.reprintSearchForm?.addEventListener('submit', (e) => {
             e.preventDefault();
