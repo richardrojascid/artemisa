@@ -5,8 +5,8 @@ class EscPosPrinter
 {
     private const ESC = "\x1b";
     private const GS = "\x1d";
-    /** Ancho seguro para papel 58mm (PT-210 y similares). */
-    private const LINE_WIDTH = 24;
+    /** Ancho imprimible PT-210 58mm (U24): ~32 caracteres. */
+    private const LINE_WIDTH = 32;
 
     public static function buildReceipt(array $order, array $items, string $cafeName = 'CAFÉ COMANDA'): string
     {
@@ -133,7 +133,9 @@ class EscPosPrinter
 
     private static function initialize(): string
     {
-        return self::ESC . '@';
+        return self::ESC . '@'
+            . self::GS . 'L' . "\x00\x00"
+            . self::GS . 'W' . "\x80\x01";
     }
 
     private static function text(string $text): string
