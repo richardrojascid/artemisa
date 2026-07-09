@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/SmtpTransport.php';
+
 class Mailer
 {
     /**
@@ -12,13 +14,125 @@ class Mailer
         $fromName = defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : APP_NAME;
 
         $boundary = '=_Part_' . md5(uniqid((string) mt_rand(), true));
-        $headers = [
+        $mimeBody = self::buildMimeBody($body, $attachments, $boundary);
+        $mimeHeaders = [
             'MIME-Version: 1.0',
             'From: ' . self::encodeAddress($fromName, $fromEmail),
             'Reply-To: ' . $fromEmail,
             'Content-Type: multipart/mixed; boundary="' . $boundary . '"',
         ];
 
+        if (self::shouldUseSmtp()) {
+            return self::sendViaSmtp($to, $subject, $mimeBody, $mimeHeaders, $fromEmail, $attachments, $body);
+        }
+
+        return self::sendViaMailFunction($to, $subject, $mimeBody, $mimeHeaders, $fromEmail, $attachments, $body);
+    }
+
+    private static function shouldUseSmtp(): bool
+    {
+        if (!defined('MAIL_DRIVER') || MAIL_DRIVER !== 'smtp') {
+            return false;
+        }
+        if (!defined('SMTP_HOST') || SMTP_HOST === '') {
+            return false;
+        }
+        if (!defined('SMTP_USER') || SMTP_USER === '') {
+            return false;
+        }
+        return defined('SMTP_PASS') && SMTP_PASS !== '';
+    }
+
+    /**
+     * @param array<int, array{filename:string, content:string, mime:string}> $attachments
+     */
+    private static function sendViaSmtp(
+        string $to,
+        string $subject,
+        string $mimeBody,
+        array $mimeHeaders,
+        string $fromEmail,
+        array $attachments,
+        string $body
+    ): array {
+        try {
+            $transport = new SmtpTransport(
+                SMTP_HOST,
+                defined('SMTP_PORT') ? (int) SMTP_PORT : 587,
+                defined('SMTP_ENCRYPTION') ? (string) SMTP_ENCRYPTION : 'tls',
+                SMTP_USER,
+                SMTP_PASS,
+                defined('SMTP_TIMEOUT') ? (int) SMTP_TIMEOUT : 20
+            );
+
+            $transport->send(
+                [trim($to)],
+                $fromEmail,
+                defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : APP_NAME,
+                $subject,
+                $mimeBody,
+                $mimeHeaders
+            );
+
+            return [
+                'sent' => true,
+                'saved_path' => null,
+                'to' => $to,
+                'from' => $fromEmail,
+                'error' => null,
+                'transport' => 'smtp',
+            ];
+        } catch (Throwable $e) {
+            $savedPath = self::saveFallback($attachments, $body, $subject);
+
+            return [
+                'sent' => false,
+                'saved_path' => $savedPath,
+                'to' => $to,
+                'from' => $fromEmail,
+                'error' => $e->getMessage(),
+                'transport' => 'smtp',
+            ];
+        }
+    }
+
+    /**
+     * @param array<int, array{filename:string, content:string, mime:string}> $attachments
+     */
+    private static function sendViaMailFunction(
+        string $to,
+        string $subject,
+        string $mimeBody,
+        array $mimeHeaders,
+        string $fromEmail,
+        array $attachments,
+        string $body
+    ): array {
+        $additionalParams = self::buildEnvelopeSender($fromEmail);
+        $sent = @mail($to, self::encodeSubject($subject), $mimeBody, implode("\r\n", $mimeHeaders), $additionalParams);
+
+        $mailError = error_get_last();
+        $savedPath = null;
+
+        if (!$sent) {
+            $savedPath = self::saveFallback($attachments, $body, $subject);
+        }
+
+        return [
+            'sent' => $sent,
+            'saved_path' => $savedPath,
+            'to' => $to,
+            'from' => $fromEmail,
+            'error' => $sent ? null : ($mailError['message'] ?? 'mail() no pudo enviar el correo'),
+            'transport' => 'mail',
+        ];
+    }
+
+    /**
+     * @param array<int, array{filename:string, content:string, mime:string}> $attachments
+     */
+    private static function buildMimeBody(string $body, array $attachments, string $boundary): string
+    {
         $message = "--{$boundary}\r\n";
         $message .= "Content-Type: text/plain; charset=UTF-8\r\n";
         $message .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
@@ -32,30 +146,21 @@ class Mailer
             $message .= chunk_split(base64_encode($attachment['content'])) . "\r\n";
         }
 
-        $message .= "--{$boundary}--";
+        return $message . "--{$boundary}--";
+    }
 
-        $additionalParams = self::buildEnvelopeSender($fromEmail);
-        $sent = @mail($to, self::encodeSubject($subject), $message, implode("\r\n", $headers), $additionalParams);
-
-        $mailError = error_get_last();
-        $savedPath = null;
-
-        if (!$sent) {
-            if (!empty($attachments)) {
-                $savedPath = self::saveAttachmentsLocally($attachments, $subject);
-            }
-            if ($savedPath === null && trim($body) !== '') {
-                $savedPath = self::savePlainBodyLocally($body, $subject);
-            }
+    /**
+     * @param array<int, array{filename:string, content:string, mime:string}> $attachments
+     */
+    private static function saveFallback(array $attachments, string $body, string $subject): ?string
+    {
+        if (!empty($attachments)) {
+            return self::saveAttachmentsLocally($attachments, $subject);
         }
-
-        return [
-            'sent' => $sent,
-            'saved_path' => $savedPath,
-            'to' => $to,
-            'from' => $fromEmail,
-            'error' => $sent ? null : ($mailError['message'] ?? 'mail() no pudo enviar el correo'),
-        ];
+        if (trim($body) !== '') {
+            return self::savePlainBodyLocally($body, $subject);
+        }
+        return null;
     }
 
     private static function buildEnvelopeSender(string $fromEmail): string
