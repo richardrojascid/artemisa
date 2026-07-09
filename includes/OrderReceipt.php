@@ -38,7 +38,7 @@ class OrderReceipt
             $qty = (int) ($item['quantity'] ?? 1);
             $name = $item['item_name'] ?? $item['name'] ?? 'Producto';
             array_push($lines, ...self::wrapLines("{$qty}x {$name}"));
-            array_push($lines, ...self::wrapLines('Precio unit.: ' . self::formatCLP((float) ($item['unit_price'] ?? 0))));
+            array_push($lines, ...self::linesLabelValue('Precio unit.:', self::formatCLP((float) ($item['unit_price'] ?? 0))));
 
             $removed = $item['removed_ingredients'] ?? [];
             if (is_string($removed)) {
@@ -55,34 +55,82 @@ class OrderReceipt
             foreach ($extras as $extra) {
                 $extraName = is_array($extra) ? ($extra['name'] ?? '') : $extra;
                 $extraPrice = is_array($extra) ? (float) ($extra['price'] ?? 0) : 0;
-                $priceStr = $extraPrice > 0 ? ' (+' . self::formatCLP($extraPrice) . ')' : '';
-                array_push($lines, ...self::wrapLines("+ {$extraName}{$priceStr}"));
+                $priceStr = $extraPrice > 0 ? '(+' . self::formatCLP($extraPrice) . ')' : '';
+                if ($priceStr !== '') {
+                    array_push($lines, ...self::linesLabelValue("+ {$extraName}", $priceStr));
+                } else {
+                    array_push($lines, ...self::wrapLines("+ {$extraName}"));
+                }
             }
 
             if (!empty($item['notes'])) {
                 array_push($lines, ...self::wrapLines('Nota: ' . $item['notes']));
             }
 
-            array_push($lines, ...self::wrapLines('Subtotal: ' . self::formatCLP((float) ($item['line_total'] ?? 0))));
+            array_push($lines, ...self::linesLabelValue('Subtotal:', self::formatCLP((float) ($item['line_total'] ?? 0))));
             $lines[] = '';
         }
 
         $lines[] = str_repeat('-', self::LINE_WIDTH);
         $subtotal = (float) ($order['subtotal'] ?? $order['total'] ?? 0);
         $tipAmount = (float) ($order['tip_amount'] ?? 0);
-        array_push($lines, ...self::wrapLines('Subtotal prod.: ' . self::formatCLP($subtotal)));
+        array_push($lines, ...self::linesLabelValue('Subtotal prod.:', self::formatCLP($subtotal)));
         if ($tipAmount > 0) {
             $tipPercent = (float) ($order['tip_percent'] ?? ($subtotal > 0 ? ($tipAmount / $subtotal) * 100 : 10));
             $tipLabel = ($order['tip_mode'] ?? '') === 'manual'
                 ? 'Propina'
                 : 'Propina ' . (int) round($tipPercent) . '%';
-            array_push($lines, ...self::wrapLines("{$tipLabel}: " . self::formatCLP($tipAmount)));
+            array_push($lines, ...self::linesLabelValue($tipLabel . ':', self::formatCLP($tipAmount)));
         }
-        array_push($lines, ...self::wrapLines('TOTAL: ' . self::formatCLP((float) ($order['total'] ?? 0))));
+        array_push($lines, ...self::linesLabelValue('TOTAL:', self::formatCLP((float) ($order['total'] ?? 0))));
         $lines[] = str_repeat('-', self::LINE_WIDTH);
         $lines[] = 'Gracias por su preferencia';
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function linesLabelValue(string $label, string $value, ?int $width = null): array
+    {
+        $width = $width ?? self::LINE_WIDTH;
+        $labelLen = mb_strlen($label, 'UTF-8');
+        $valueLen = mb_strlen($value, 'UTF-8');
+
+        if ($labelLen + $valueLen <= $width) {
+            return [self::padLine($label, $value, $width)];
+        }
+
+        $lines = self::wrapLines($label, $width);
+        $lastIdx = count($lines) - 1;
+        $lastLine = $lines[$lastIdx];
+        $lastLen = mb_strlen($lastLine, 'UTF-8');
+
+        if ($lastLen + $valueLen <= $width) {
+            $lines[$lastIdx] = self::padLine($lastLine, $value, $width);
+            return $lines;
+        }
+
+        $lines[] = self::alignRightValue($value, $width);
+        return $lines;
+    }
+
+    private static function padLine(string $left, string $right, int $width): string
+    {
+        $leftLen = mb_strlen($left, 'UTF-8');
+        $rightLen = mb_strlen($right, 'UTF-8');
+        $spaces = max(1, $width - $leftLen - $rightLen);
+        return $left . str_repeat(' ', $spaces) . $right;
+    }
+
+    private static function alignRightValue(string $value, int $width): string
+    {
+        $valueLen = mb_strlen($value, 'UTF-8');
+        if ($valueLen >= $width) {
+            return $value;
+        }
+        return str_repeat(' ', $width - $valueLen) . $value;
     }
 
     /**
