@@ -13,10 +13,10 @@ const ThermalPrinter = (() => {
     const BLE_CHUNK_MAX = 20;
     const BATCH_MAX_BYTES = 90;
     const BATCH_MAX_LINES = 3;
-    const BATCH_PAUSE_MS = 65;
-    const ITEM_SEPARATOR_EXTRA_MS = 50;
-    const CHUNK_DELAY_WITH_RESPONSE_MS = 42;
-    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 58;
+    const BATCH_PAUSE_MS = 80;
+    const ITEM_SEPARATOR_EXTRA_MS = 55;
+    const CHUNK_DELAY_WITH_RESPONSE_MS = 45;
+    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 60;
 
     const PRINTER_SERVICE_UUIDS = [
         '000018f0-0000-1000-8000-00805f9b34fb',
@@ -281,15 +281,17 @@ const ThermalPrinter = (() => {
             ? CHUNK_DELAY_WITHOUT_RESPONSE_MS
             : CHUNK_DELAY_WITH_RESPONSE_MS;
 
-        const lines = splitIntoLines(bytes);
+        const batches = buildLineBatches(splitIntoLines(bytes), BATCH_MAX_BYTES, BATCH_MAX_LINES);
 
-        for (const line of lines) {
-            await sendBytes(characteristic, line, chunkSize, chunkDelay);
-            const pause = isBlankLine(line) ? LINE_PAUSE_MS + BLANK_LINE_EXTRA_MS : LINE_PAUSE_MS;
+        for (const batch of batches) {
+            await sendBytes(characteristic, batch.bytes, chunkSize, chunkDelay);
+            const pause = batch.hasBlankLine
+                ? BATCH_PAUSE_MS + ITEM_SEPARATOR_EXTRA_MS
+                : BATCH_PAUSE_MS;
             await delay(pause);
         }
 
-        const tailDelay = Math.min(3500, 450 + lines.length * 18);
+        const tailDelay = Math.min(2800, 400 + batches.length * 14);
         await delay(tailDelay);
     }
 
