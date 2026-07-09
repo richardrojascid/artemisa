@@ -44,11 +44,6 @@ const ThermalPrinter = (() => {
             optionalServices: PRINTER_SERVICE_UUIDS,
         });
 
-        const name = await attachToDevice(device);
-        return { name, deviceId: device.id };
-    }
-
-    async function attachToDevice(device) {
         const server = await device.gatt.connect();
         let characteristic = null;
 
@@ -84,41 +79,16 @@ const ThermalPrinter = (() => {
         bluetoothDevice = device;
         bluetoothCharacteristic = characteristic;
 
-        device.addEventListener('gattserverdisconnected', onGattDisconnected);
+        device.addEventListener('gattserverdisconnected', () => {
+            bluetoothDevice = null;
+            bluetoothCharacteristic = null;
+        });
 
         return device.name || 'Impresora Bluetooth';
     }
 
-    function onGattDisconnected() {
-        bluetoothDevice = null;
-        bluetoothCharacteristic = null;
-        window.dispatchEvent(new CustomEvent('thermal-printer-disconnected'));
-    }
-
-    async function reconnectBluetooth(deviceId) {
-        if (!isBluetoothSupported() || !deviceId) {
-            return false;
-        }
-        if (isConnected()) {
-            return true;
-        }
-        if (typeof navigator.bluetooth.getDevices !== 'function') {
-            return false;
-        }
-
-        const devices = await navigator.bluetooth.getDevices();
-        const device = devices.find((entry) => entry.id === deviceId);
-        if (!device) {
-            return false;
-        }
-
-        await attachToDevice(device);
-        return true;
-    }
-
     function disconnectBluetooth() {
         if (bluetoothDevice?.gatt?.connected) {
-            bluetoothDevice.removeEventListener('gattserverdisconnected', onGattDisconnected);
             bluetoothDevice.gatt.disconnect();
         }
         bluetoothDevice = null;
@@ -386,9 +356,6 @@ const ThermalPrinter = (() => {
         }
 
         if (mode === 'bluetooth' && isBluetoothSupported()) {
-            if (!isConnected() && settings.printerDeviceId) {
-                await reconnectBluetooth(settings.printerDeviceId);
-            }
             if (!isConnected()) {
                 throw new Error('Conecta la impresora Bluetooth en Configuración.');
             }
@@ -403,7 +370,6 @@ const ThermalPrinter = (() => {
     return {
         isBluetoothSupported,
         connectBluetooth,
-        reconnectBluetooth,
         disconnectBluetooth,
         isConnected,
         printOrder,
