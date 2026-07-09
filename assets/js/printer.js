@@ -6,12 +6,17 @@ const ThermalPrinter = (() => {
     let bluetoothDevice = null;
     let bluetoothCharacteristic = null;
 
-    /** PT-210 y clones: buffer real ~20 bytes aunque BLE reporte MTU mayor. */
+    /**
+     * PT-210 (self-test: BT BROADCAST 32, baud 115200):
+     * - Cada escritura BLE debe ser <= 20 bytes para no perder datos
+     * - El buffer acepta ráfagas si se agrupan líneas completas con pausas cortas
+     */
     const BLE_CHUNK_MAX = 20;
-    const LINE_PAUSE_MS = 220;
-    const BLANK_LINE_EXTRA_MS = 120;
-    const CHUNK_DELAY_WITH_RESPONSE_MS = 140;
-    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 170;
+    const BATCH_MAX_BYTES = 96;
+    const BATCH_PAUSE_MS = 55;
+    const ITEM_SEPARATOR_EXTRA_MS = 45;
+    const CHUNK_DELAY_WITH_RESPONSE_MS = 40;
+    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 55;
 
     const PRINTER_SERVICE_UUIDS = [
         '000018f0-0000-1000-8000-00805f9b34fb',
@@ -94,9 +99,6 @@ const ThermalPrinter = (() => {
         return !!(bluetoothDevice?.gatt?.connected && bluetoothCharacteristic);
     }
 
-    /**
-     * Nunca confiar en MTU alto del navegador: la PT-210 pierde datos con chunks > 20.
-     */
     function getBleChunkSize() {
         return BLE_CHUNK_MAX;
     }
@@ -188,8 +190,56 @@ const ThermalPrinter = (() => {
         return lines;
     }
 
+    function concatLines(lines) {
+        const total = lines.reduce((sum, line) => sum + line.length, 0);
+        const out = new Uint8Array(total);
+        let offset = 0;
+        for (const line of lines) {
+            out.set(line, offset);
+            offset += line.length;
+        }
+        return out;
+    }
+
     function isBlankLine(lineBytes) {
         return lineBytes.length === 0 || (lineBytes.length === 1 && lineBytes[0] === 0x0a);
+    }
+
+    /**
+     * Agrupa líneas completas en lotes (~96 bytes) para reducir pausas
+     * sin superar el buffer interno de la PT-210.
+     */
+    function buildLineBatches(lines, maxBatchBytes) {
+        const batches = [];
+        let currentLines = [];
+        let currentSize = 0;
+
+        for (const line of lines) {
+            if (line.length > maxBatchBytes) {
+                if (currentLines.length > 0) {
+                    batches.push({ bytes: concatLines(currentLines), hasBlankLine: currentLines.some(isBlankLine) });
+                    currentLines = [];
+                    currentSize = 0;
+                }
+                batches.push({ bytes: line, hasBlankLine: isBlankLine(line) });
+                continue;
+            }
+
+            if (currentSize + line.length > maxBatchBytes && currentLines.length > 0) {
+                batches.push({ bytes: concatLines(currentLines), hasBlankLine: currentLines.some(isBlankLine) });
+                currentLines = [];
+                currentSize = 0;
+            }
+
+            currentLines.push(line);
+            currentSize += line.length;
+        }
+
+        if (currentLines.length > 0) {
+            batches.push({ bytes: concatLines(currentLines), hasBlankLine: currentLines.some(isBlankLine) });
+        }
+
+        return batches;
     }
 
     async function writeBleChunk(characteristic, chunk) {
@@ -204,8 +254,8 @@ const ThermalPrinter = (() => {
         throw new Error('La impresora no admite escritura Bluetooth.');
     }
 
-    async function sendLine(characteristic, lineBytes, chunkSize, chunkDelay) {
-        const chunks = buildBleChunks(lineBytes, chunkSize);
+    async function sendBytes(characteristic, data, chunkSize, chunkDelay) {
+        const chunks = buildBleChunks(data, chunkSize);
         for (const chunk of chunks) {
             await writeBleChunk(characteristic, chunk);
             await delay(chunkDelay);
@@ -231,15 +281,17 @@ const ThermalPrinter = (() => {
             ? CHUNK_DELAY_WITHOUT_RESPONSE_MS
             : CHUNK_DELAY_WITH_RESPONSE_MS;
 
-        const lines = splitIntoLines(bytes);
+        const batches = buildLineBatches(splitIntoLines(bytes), BATCH_MAX_BYTES);
 
-        for (const line of lines) {
-            await sendLine(characteristic, line, chunkSize, chunkDelay);
-            const pause = isBlankLine(line) ? LINE_PAUSE_MS + BLANK_LINE_EXTRA_MS : LINE_PAUSE_MS;
+        for (const batch of batches) {
+            await sendBytes(characteristic, batch.bytes, chunkSize, chunkDelay);
+            const pause = batch.hasBlankLine
+                ? BATCH_PAUSE_MS + ITEM_SEPARATOR_EXTRA_MS
+                : BATCH_PAUSE_MS;
             await delay(pause);
         }
 
-        const tailDelay = Math.min(6000, 800 + lines.length * 30);
+        const tailDelay = Math.min(2000, 350 + batches.length * 12);
         await delay(tailDelay);
     }
 
