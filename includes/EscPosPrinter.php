@@ -110,7 +110,7 @@ class EscPosPrinter
         $out .= self::separator();
         $out .= self::alignCenter();
         $out .= self::text("Gracias por su preferencia\n");
-        $out .= self::feed(3);
+        $out .= self::feed(5);
         $out .= self::cut();
 
         return $out;
