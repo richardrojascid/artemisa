@@ -57,7 +57,7 @@ class EscPosPrinter
             $out .= self::textWrapped("{$qty}x {$name}");
 
             $unitPrice = (float) ($item['unit_price'] ?? 0);
-            $out .= self::textWrapped('Precio unit.: ' . self::formatCLP($unitPrice));
+            $out .= self::textLabelValue('Precio unit.:', self::formatCLP($unitPrice));
 
             $removed = $item['removed_ingredients'] ?? [];
             if (is_string($removed)) {
@@ -75,8 +75,12 @@ class EscPosPrinter
                 foreach ($extras as $extra) {
                     $extraName = is_array($extra) ? ($extra['name'] ?? '') : $extra;
                     $extraPrice = is_array($extra) ? (float) ($extra['price'] ?? 0) : 0;
-                    $priceStr = $extraPrice > 0 ? ' (+' . self::formatCLP($extraPrice) . ')' : '';
-                    $out .= self::textWrapped("+ {$extraName}{$priceStr}");
+                    $priceStr = $extraPrice > 0 ? '(+' . self::formatCLP($extraPrice) . ')' : '';
+                    if ($priceStr !== '') {
+                        $out .= self::textLabelValue("+ {$extraName}", $priceStr);
+                    } else {
+                        $out .= self::textWrapped("+ {$extraName}");
+                    }
                 }
             }
 
@@ -84,7 +88,7 @@ class EscPosPrinter
                 $out .= self::textWrapped('Nota: ' . $item['notes']);
             }
 
-            $out .= self::textWrapped('Subtotal: ' . self::formatCLP($lineTotal));
+            $out .= self::textLabelValue('Subtotal:', self::formatCLP($lineTotal));
             $out .= self::text("\n");
         }
 
@@ -92,18 +96,18 @@ class EscPosPrinter
 
         $subtotal = (float) ($order['subtotal'] ?? $order['total'] ?? 0);
         $tipAmount = (float) ($order['tip_amount'] ?? 0);
-        $out .= self::textWrapped('Subtotal prod.: ' . self::formatCLP($subtotal));
+        $out .= self::textLabelValue('Subtotal prod.:', self::formatCLP($subtotal));
 
         if ($tipAmount > 0) {
             $tipPercent = (float) ($order['tip_percent'] ?? ($subtotal > 0 ? ($tipAmount / $subtotal) * 100 : 10));
             $tipLabel = ($order['tip_mode'] ?? '') === 'manual'
                 ? 'Propina'
                 : 'Propina ' . (int) round($tipPercent) . '%';
-            $out .= self::textWrapped("{$tipLabel}: " . self::formatCLP($tipAmount));
+            $out .= self::textLabelValue($tipLabel . ':', self::formatCLP($tipAmount));
         }
 
         $out .= self::bold(true);
-        $out .= self::textWrapped('TOTAL: ' . self::formatCLP((float) ($order['total'] ?? 0)));
+        $out .= self::textLabelValue('TOTAL:', self::formatCLP((float) ($order['total'] ?? 0)));
         $out .= self::bold(false);
 
         $out .= self::separator();
@@ -135,6 +139,59 @@ class EscPosPrinter
     private static function text(string $text): string
     {
         return $text;
+    }
+
+    private static function textLabelValue(string $label, string $value): string
+    {
+        $out = '';
+        foreach (self::linesLabelValue($label, $value) as $line) {
+            $out .= self::text($line . "\n");
+        }
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function linesLabelValue(string $label, string $value, ?int $width = null): array
+    {
+        $width = $width ?? self::LINE_WIDTH;
+        $labelLen = mb_strlen($label, 'UTF-8');
+        $valueLen = mb_strlen($value, 'UTF-8');
+
+        if ($labelLen + $valueLen <= $width) {
+            return [self::padLine($label, $value, $width)];
+        }
+
+        $lines = self::wrapLines($label, $width);
+        $lastIdx = count($lines) - 1;
+        $lastLine = $lines[$lastIdx];
+        $lastLen = mb_strlen($lastLine, 'UTF-8');
+
+        if ($lastLen + $valueLen <= $width) {
+            $lines[$lastIdx] = self::padLine($lastLine, $value, $width);
+            return $lines;
+        }
+
+        $lines[] = self::alignRightValue($value, $width);
+        return $lines;
+    }
+
+    private static function padLine(string $left, string $right, int $width): string
+    {
+        $leftLen = mb_strlen($left, 'UTF-8');
+        $rightLen = mb_strlen($right, 'UTF-8');
+        $spaces = max(1, $width - $leftLen - $rightLen);
+        return $left . str_repeat(' ', $spaces) . $right;
+    }
+
+    private static function alignRightValue(string $value, int $width): string
+    {
+        $valueLen = mb_strlen($value, 'UTF-8');
+        if ($valueLen >= $width) {
+            return $value;
+        }
+        return str_repeat(' ', $width - $valueLen) . $value;
     }
 
     private static function textWrapped(string $text, ?int $width = null): string
