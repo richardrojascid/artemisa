@@ -5,6 +5,9 @@ class EscPosPrinter
 {
     private const ESC = "\x1b";
     private const GS = "\x1d";
+    /** Ancho seguro para papel 58mm (PT-210 y similares). */
+    private const LINE_WIDTH = 24;
+    private const BOLD_LINE_WIDTH = 22;
 
     public static function buildReceipt(array $order, array $items, string $cafeName = 'CAFÉ COMANDA'): string
     {
@@ -12,7 +15,9 @@ class EscPosPrinter
         $out .= self::initialize();
         $out .= self::alignCenter();
         $out .= self::bold(true);
-        $out .= self::text($cafeName . "\n");
+        foreach (self::wrapLines($cafeName, self::BOLD_LINE_WIDTH) as $line) {
+            $out .= self::text($line . "\n");
+        }
         $out .= self::bold(false);
         $out .= self::text("COMANDA DE PEDIDO\n");
         if (!empty($order['id'])) {
@@ -24,10 +29,10 @@ class EscPosPrinter
 
         $out .= self::alignLeft();
         $createdAt = $order['created_at'] ?? date('Y-m-d H:i:s');
-        $out .= self::text('Fecha: ' . date('d/m/Y H:i', strtotime($createdAt)) . "\n");
+        $out .= self::textWrapped('Fecha: ' . date('d/m/Y H:i', strtotime($createdAt)));
 
         if (!empty($order['client_name'])) {
-            $out .= self::text('Cliente: ' . $order['client_name'] . "\n");
+            $out .= self::textWrapped('Cliente: ' . $order['client_name']);
         }
 
         if (!empty($order['table_number'])) {
@@ -35,14 +40,14 @@ class EscPosPrinter
             if ($isTakeaway) {
                 $out .= self::text("PARA LLEVAR (PL)\n");
             } else {
-                $out .= self::text('Mesa: ' . $order['table_number'] . "\n");
+                $out .= self::textWrapped('Mesa: ' . $order['table_number']);
             }
         }
         if (!empty($order['waiter_name'])) {
             $staffLabel = (!empty($order['table_number']) && strtoupper((string) $order['table_number']) === 'PL')
                 ? 'Cajero'
                 : 'Mesero';
-            $out .= self::text($staffLabel . ': ' . $order['waiter_name'] . "\n");
+            $out .= self::textWrapped($staffLabel . ': ' . $order['waiter_name']);
         }
 
         $out .= self::separator();
@@ -52,19 +57,21 @@ class EscPosPrinter
             $name = $item['item_name'] ?? $item['name'] ?? 'Producto';
             $lineTotal = (float) ($item['line_total'] ?? 0);
 
-            $out .= self::bold(true);
-            $out .= self::text("{$qty}x {$name}\n");
-            $out .= self::bold(false);
+            foreach (self::wrapLines("{$qty}x {$name}", self::BOLD_LINE_WIDTH) as $line) {
+                $out .= self::bold(true);
+                $out .= self::text($line . "\n");
+                $out .= self::bold(false);
+            }
 
             $unitPrice = (float) ($item['unit_price'] ?? 0);
-            $out .= self::text('   Precio unit.: ' . self::formatCLP($unitPrice) . "\n");
+            $out .= self::textWrapped('   Precio unit.: ' . self::formatCLP($unitPrice));
 
             $removed = $item['removed_ingredients'] ?? [];
             if (is_string($removed)) {
                 $removed = json_decode($removed, true) ?: [];
             }
             if (!empty($removed)) {
-                $out .= self::text('   Sin: ' . implode(', ', $removed) . "\n");
+                $out .= self::textWrapped('   Sin: ' . implode(', ', $removed));
             }
 
             $extras = $item['added_extras'] ?? [];
@@ -76,35 +83,35 @@ class EscPosPrinter
                     $extraName = is_array($extra) ? ($extra['name'] ?? '') : $extra;
                     $extraPrice = is_array($extra) ? (float) ($extra['price'] ?? 0) : 0;
                     $priceStr = $extraPrice > 0 ? ' (+' . self::formatCLP($extraPrice) . ')' : '';
-                    $out .= self::text("   + {$extraName}{$priceStr}\n");
+                    $out .= self::textWrapped("   + {$extraName}{$priceStr}");
                 }
             }
 
             if (!empty($item['notes'])) {
-                $out .= self::text('   Nota: ' . $item['notes'] . "\n");
+                $out .= self::textWrapped('   Nota: ' . $item['notes']);
             }
 
-            $out .= self::text('   Subtotal: ' . self::formatCLP($lineTotal) . "\n");
+            $out .= self::textWrapped('   Subtotal: ' . self::formatCLP($lineTotal));
             $out .= self::text("\n");
         }
 
         $out .= self::separator();
-        $out .= self::alignRight();
+        $out .= self::alignLeft();
 
         $subtotal = (float) ($order['subtotal'] ?? $order['total'] ?? 0);
         $tipAmount = (float) ($order['tip_amount'] ?? 0);
-        $out .= self::text('Subtotal productos: ' . self::formatCLP($subtotal) . "\n");
+        $out .= self::textWrapped('Subtotal productos: ' . self::formatCLP($subtotal));
 
         if ($tipAmount > 0) {
             $tipPercent = (float) ($order['tip_percent'] ?? ($subtotal > 0 ? ($tipAmount / $subtotal) * 100 : 10));
             $tipLabel = ($order['tip_mode'] ?? '') === 'manual'
                 ? 'Propina'
                 : 'Propina ' . (int) round($tipPercent) . '%';
-            $out .= self::text("{$tipLabel}: " . self::formatCLP($tipAmount) . "\n");
+            $out .= self::textWrapped("{$tipLabel}: " . self::formatCLP($tipAmount));
         }
 
         $out .= self::bold(true);
-        $out .= self::text('TOTAL: ' . self::formatCLP((float) ($order['total'] ?? 0)) . "\n");
+        $out .= self::textWrapped('TOTAL: ' . self::formatCLP((float) ($order['total'] ?? 0)));
         $out .= self::bold(false);
 
         $out .= self::separator();
@@ -138,6 +145,63 @@ class EscPosPrinter
         return $text;
     }
 
+    private static function textWrapped(string $text, ?int $width = null): string
+    {
+        $out = '';
+        foreach (self::wrapLines($text, $width) as $line) {
+            $out .= self::text($line . "\n");
+        }
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function wrapLines(string $text, ?int $width = null): array
+    {
+        $width = $width ?? self::LINE_WIDTH;
+        $text = trim($text);
+        if ($text === '') {
+            return [''];
+        }
+
+        $lines = [];
+        $words = preg_split('/\s+/u', $text) ?: [];
+        $current = '';
+
+        foreach ($words as $word) {
+            if (mb_strlen($word, 'UTF-8') > $width) {
+                if ($current !== '') {
+                    $lines[] = $current;
+                    $current = '';
+                }
+                $offset = 0;
+                $len = mb_strlen($word, 'UTF-8');
+                while ($offset < $len) {
+                    $lines[] = mb_substr($word, $offset, $width, 'UTF-8');
+                    $offset += $width;
+                }
+                continue;
+            }
+
+            $candidate = $current === '' ? $word : $current . ' ' . $word;
+            if (mb_strlen($candidate, 'UTF-8') <= $width) {
+                $current = $candidate;
+            } else {
+                if ($current !== '') {
+                    $lines[] = $current;
+                }
+                $current = $word;
+            }
+        }
+
+        if ($current !== '') {
+            $lines[] = $current;
+        }
+
+        return $lines;
+    }
+
     private static function bold(bool $on): string
     {
         return self::ESC . 'E' . chr($on ? 1 : 0);
@@ -160,7 +224,7 @@ class EscPosPrinter
 
     private static function separator(): string
     {
-        return str_repeat('-', 32) . "\n";
+        return str_repeat('-', self::LINE_WIDTH) . "\n";
     }
 
     private static function feed(int $lines = 1): string
