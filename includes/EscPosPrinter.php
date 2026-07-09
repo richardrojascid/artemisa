@@ -7,7 +7,6 @@ class EscPosPrinter
     private const GS = "\x1d";
     /** Ancho seguro para papel 58mm (PT-210 y similares). */
     private const LINE_WIDTH = 24;
-    private const BOLD_LINE_WIDTH = 22;
 
     public static function buildReceipt(array $order, array $items, string $cafeName = 'CAFÉ COMANDA'): string
     {
@@ -15,15 +14,13 @@ class EscPosPrinter
         $out .= self::initialize();
         $out .= self::alignCenter();
         $out .= self::bold(true);
-        foreach (self::wrapLines($cafeName, self::BOLD_LINE_WIDTH) as $line) {
+        foreach (self::wrapLines($cafeName) as $line) {
             $out .= self::text($line . "\n");
         }
         $out .= self::bold(false);
         $out .= self::text("COMANDA DE PEDIDO\n");
         if (!empty($order['id'])) {
-            $out .= self::bold(true);
             $out .= self::text('Comanda #' . $order['id'] . "\n");
-            $out .= self::bold(false);
         }
         $out .= self::separator();
 
@@ -57,21 +54,17 @@ class EscPosPrinter
             $name = $item['item_name'] ?? $item['name'] ?? 'Producto';
             $lineTotal = (float) ($item['line_total'] ?? 0);
 
-            foreach (self::wrapLines("{$qty}x {$name}", self::BOLD_LINE_WIDTH) as $line) {
-                $out .= self::bold(true);
-                $out .= self::text($line . "\n");
-                $out .= self::bold(false);
-            }
+            $out .= self::textWrapped("{$qty}x {$name}");
 
             $unitPrice = (float) ($item['unit_price'] ?? 0);
-            $out .= self::textWrapped('   Precio unit.: ' . self::formatCLP($unitPrice));
+            $out .= self::textWrapped('Precio unit.: ' . self::formatCLP($unitPrice));
 
             $removed = $item['removed_ingredients'] ?? [];
             if (is_string($removed)) {
                 $removed = json_decode($removed, true) ?: [];
             }
             if (!empty($removed)) {
-                $out .= self::textWrapped('   Sin: ' . implode(', ', $removed));
+                $out .= self::textWrapped('Sin: ' . implode(', ', $removed));
             }
 
             $extras = $item['added_extras'] ?? [];
@@ -83,24 +76,23 @@ class EscPosPrinter
                     $extraName = is_array($extra) ? ($extra['name'] ?? '') : $extra;
                     $extraPrice = is_array($extra) ? (float) ($extra['price'] ?? 0) : 0;
                     $priceStr = $extraPrice > 0 ? ' (+' . self::formatCLP($extraPrice) . ')' : '';
-                    $out .= self::textWrapped("   + {$extraName}{$priceStr}");
+                    $out .= self::textWrapped("+ {$extraName}{$priceStr}");
                 }
             }
 
             if (!empty($item['notes'])) {
-                $out .= self::textWrapped('   Nota: ' . $item['notes']);
+                $out .= self::textWrapped('Nota: ' . $item['notes']);
             }
 
-            $out .= self::textWrapped('   Subtotal: ' . self::formatCLP($lineTotal));
+            $out .= self::textWrapped('Subtotal: ' . self::formatCLP($lineTotal));
             $out .= self::text("\n");
         }
 
         $out .= self::separator();
-        $out .= self::alignLeft();
 
         $subtotal = (float) ($order['subtotal'] ?? $order['total'] ?? 0);
         $tipAmount = (float) ($order['tip_amount'] ?? 0);
-        $out .= self::textWrapped('Subtotal productos: ' . self::formatCLP($subtotal));
+        $out .= self::textWrapped('Subtotal prod.: ' . self::formatCLP($subtotal));
 
         if ($tipAmount > 0) {
             $tipPercent = (float) ($order['tip_percent'] ?? ($subtotal > 0 ? ($tipAmount / $subtotal) * 100 : 10));
@@ -215,11 +207,6 @@ class EscPosPrinter
     private static function alignCenter(): string
     {
         return self::ESC . 'a' . "\x01";
-    }
-
-    private static function alignRight(): string
-    {
-        return self::ESC . 'a' . "\x02";
     }
 
     private static function separator(): string
