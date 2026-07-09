@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 class OrderReceipt
 {
-    private const LINE_WIDTH = 32;
+    private const LINE_WIDTH = 28;
 
     public static function toPlainText(array $order, array $items, string $cafeName): string
     {

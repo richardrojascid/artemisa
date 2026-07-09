@@ -7,14 +7,16 @@ const ThermalPrinter = (() => {
     let bluetoothCharacteristic = null;
 
     /**
-     * PT-210 58mm @ 32 columnas: 1 línea por envío (buffer pequeño).
+     * PT-210 58mm @ 28 columnas: lotes de hasta 3 líneas (~87 bytes).
      * Chunks BLE siguen siendo <= 20 bytes.
      */
     const BLE_CHUNK_MAX = 20;
-    const LINE_PAUSE_MS = 105;
-    const BLANK_LINE_EXTRA_MS = 55;
-    const CHUNK_DELAY_WITH_RESPONSE_MS = 45;
-    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 60;
+    const BATCH_MAX_BYTES = 90;
+    const BATCH_MAX_LINES = 3;
+    const BATCH_PAUSE_MS = 65;
+    const ITEM_SEPARATOR_EXTRA_MS = 50;
+    const CHUNK_DELAY_WITH_RESPONSE_MS = 42;
+    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 58;
 
     const PRINTER_SERVICE_UUIDS = [
         '000018f0-0000-1000-8000-00805f9b34fb',
@@ -188,8 +190,56 @@ const ThermalPrinter = (() => {
         return lines;
     }
 
+    function concatLines(lines) {
+        const total = lines.reduce((sum, line) => sum + line.length, 0);
+        const out = new Uint8Array(total);
+        let offset = 0;
+        for (const line of lines) {
+            out.set(line, offset);
+            offset += line.length;
+        }
+        return out;
+    }
+
     function isBlankLine(lineBytes) {
         return lineBytes.length === 0 || (lineBytes.length === 1 && lineBytes[0] === 0x0a);
+    }
+
+    function buildLineBatches(lines, maxBatchBytes, maxLinesPerBatch) {
+        const batches = [];
+        let currentLines = [];
+        let currentSize = 0;
+
+        const flush = () => {
+            if (currentLines.length === 0) return;
+            batches.push({
+                bytes: concatLines(currentLines),
+                hasBlankLine: currentLines.some(isBlankLine),
+            });
+            currentLines = [];
+            currentSize = 0;
+        };
+
+        for (const line of lines) {
+            if (line.length > maxBatchBytes) {
+                flush();
+                batches.push({ bytes: line, hasBlankLine: isBlankLine(line) });
+                continue;
+            }
+
+            const exceedsBytes = currentSize + line.length > maxBatchBytes;
+            const exceedsLines = currentLines.length >= maxLinesPerBatch;
+
+            if (currentLines.length > 0 && (exceedsBytes || exceedsLines)) {
+                flush();
+            }
+
+            currentLines.push(line);
+            currentSize += line.length;
+        }
+
+        flush();
+        return batches;
     }
 
     async function writeBleChunk(characteristic, chunk) {
