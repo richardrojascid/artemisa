@@ -96,9 +96,13 @@
 
     function loadSettings() {
         try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            const settings = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            if (!settings.printerMode) {
+                settings.printerMode = 'bluetooth';
+            }
+            return settings;
         } catch {
-            return {};
+            return { printerMode: 'bluetooth' };
         }
     }
 
@@ -787,21 +791,25 @@
                 const methodLabels = { bluetooth: 'Bluetooth', browser: 'navegador', network: 'red' };
                 let toastMsg = `Comanda #${data.order.id} enviada e impresa (${methodLabels[printResult.method] || 'ok'})`;
                 if (data.email?.sent) {
-                    toastMsg += ' · Correo enviado';
+                    toastMsg += ' · Correo enviado (SMTP)';
                 } else if (data.email?.saved_path) {
-                    toastMsg += ' · Correo guardado en servidor (mail no disponible)';
+                    toastMsg += ' · Comanda guardada en servidor (correo no enviado)';
+                } else if (data.email?.error) {
+                    toastMsg += ' · Correo: ' + data.email.error;
                 } else if (data.email) {
                     toastMsg += ' · Correo no enviado';
                 }
-                showToast(toastMsg);
+                showToast(toastMsg, data.email?.sent ? 'success' : (data.email?.error ? 'error' : 'success'));
             } catch (printErr) {
                 let toastMsg = 'Pedido guardado. Impresión: ' + printErr.message;
                 if (data.email?.sent) {
-                    toastMsg += ' · Correo enviado';
+                    toastMsg += ' · Correo enviado (SMTP)';
                 } else if (data.email?.saved_path) {
-                    toastMsg += ' · Correo guardado en servidor (mail no disponible)';
+                    toastMsg += ' · Comanda guardada en servidor (correo no enviado)';
+                } else if (data.email?.error) {
+                    toastMsg += ' · Correo: ' + data.email.error;
                 } else if (data.email) {
-                    toastMsg += ' · Correo no enviado (configura MAIL_FROM en Hostgator)';
+                    toastMsg += ' · Correo no enviado';
                 }
                 showToast(toastMsg, data.email?.sent ? 'success' : 'error');
             }
@@ -1303,7 +1311,10 @@
     function initSettings() {
         const settings = loadSettings();
 
-        if (settings.printerMode) els.printerMode.value = settings.printerMode;
+        els.printerMode.value = settings.printerMode || 'bluetooth';
+        if (!localStorage.getItem(STORAGE_KEY)) {
+            saveSettings(settings);
+        }
 
         els.printerMode.addEventListener('change', () => {
             $('#btPrinterGroup').style.display = els.printerMode.value === 'bluetooth' ? 'block' : 'none';
@@ -1315,18 +1326,31 @@
 
         els.settingsModal.querySelector('form').addEventListener('submit', (e) => {
             e.preventDefault();
-            saveSettings({ ...loadSettings(), printerMode: els.printerMode.value });
+            const previous = loadSettings();
+            const printerMode = els.printerMode.value;
+            if (previous.printerMode === 'bluetooth' && printerMode !== 'bluetooth') {
+                ThermalPrinter.disconnectBluetooth();
+            }
+            saveSettings({ ...loadSettings(), printerMode });
             els.settingsModal.close();
+            updatePrinterStatus();
             showToast('Configuración guardada');
         });
 
         els.btnConnectPrinter.addEventListener('click', async () => {
             try {
                 els.btnConnectPrinter.disabled = true;
-                const name = await ThermalPrinter.connectBluetooth();
-                saveSettings({ ...loadSettings(), printerName: name });
+                const result = await ThermalPrinter.connectBluetooth();
+                saveSettings({
+                    ...loadSettings(),
+                    printerMode: 'bluetooth',
+                    printerName: result.name,
+                    printerDeviceId: result.deviceId,
+                });
+                els.printerMode.value = 'bluetooth';
+                els.printerMode.dispatchEvent(new Event('change'));
                 updatePrinterStatus();
-                showToast(`Conectado: ${name}`);
+                showToast(`Conectado: ${result.name}`);
             } catch (err) {
                 showToast(err.message, 'error');
             } finally {
@@ -1334,13 +1358,44 @@
             }
         });
 
+        window.addEventListener('thermal-printer-disconnected', () => {
+            updatePrinterStatus();
+            tryAutoReconnectPrinter({ silent: true });
+        });
+
         updatePrinterStatus();
+        tryAutoReconnectPrinter({ silent: true });
+    }
+
+    let reconnectingPrinter = false;
+
+    async function tryAutoReconnectPrinter({ silent = false } = {}) {
+        const settings = loadSettings();
+        if (settings.printerMode !== 'bluetooth') return;
+        if (!ThermalPrinter.isBluetoothSupported()) return;
+        if (ThermalPrinter.isConnected()) return;
+        if (!settings.printerDeviceId || reconnectingPrinter) return;
+
+        reconnectingPrinter = true;
+        try {
+            const ok = await ThermalPrinter.reconnectBluetooth(settings.printerDeviceId);
+            updatePrinterStatus();
+            if (ok && !silent) {
+                showToast(`Impresora reconectada: ${settings.printerName || 'Bluetooth'}`);
+            }
+        } catch (_) {
+            updatePrinterStatus();
+        } finally {
+            reconnectingPrinter = false;
+        }
     }
 
     function updatePrinterStatus() {
         const settings = loadSettings();
         if (ThermalPrinter.isConnected()) {
             els.printerStatus.textContent = 'Conectada: ' + (settings.printerName || 'Bluetooth');
+        } else if (settings.printerDeviceId) {
+            els.printerStatus.textContent = 'Desconectada — reconecta al actualizar o imprimir';
         } else if (settings.printerName) {
             els.printerStatus.textContent = 'Desconectada (vuelve a conectar)';
         } else {
