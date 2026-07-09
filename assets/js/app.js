@@ -96,13 +96,9 @@
 
     function loadSettings() {
         try {
-            const settings = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-            if (!settings.printerMode) {
-                settings.printerMode = 'bluetooth';
-            }
-            return settings;
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
         } catch {
-            return { printerMode: 'bluetooth' };
+            return {};
         }
     }
 
@@ -1311,10 +1307,7 @@
     function initSettings() {
         const settings = loadSettings();
 
-        els.printerMode.value = settings.printerMode || 'bluetooth';
-        if (!localStorage.getItem(STORAGE_KEY)) {
-            saveSettings(settings);
-        }
+        if (settings.printerMode) els.printerMode.value = settings.printerMode;
 
         els.printerMode.addEventListener('change', () => {
             $('#btPrinterGroup').style.display = els.printerMode.value === 'bluetooth' ? 'block' : 'none';
@@ -1326,31 +1319,18 @@
 
         els.settingsModal.querySelector('form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const previous = loadSettings();
-            const printerMode = els.printerMode.value;
-            if (previous.printerMode === 'bluetooth' && printerMode !== 'bluetooth') {
-                ThermalPrinter.disconnectBluetooth();
-            }
-            saveSettings({ ...loadSettings(), printerMode });
+            saveSettings({ ...loadSettings(), printerMode: els.printerMode.value });
             els.settingsModal.close();
-            updatePrinterStatus();
             showToast('Configuración guardada');
         });
 
         els.btnConnectPrinter.addEventListener('click', async () => {
             try {
                 els.btnConnectPrinter.disabled = true;
-                const result = await ThermalPrinter.connectBluetooth();
-                saveSettings({
-                    ...loadSettings(),
-                    printerMode: 'bluetooth',
-                    printerName: result.name,
-                    printerDeviceId: result.deviceId,
-                });
-                els.printerMode.value = 'bluetooth';
-                els.printerMode.dispatchEvent(new Event('change'));
+                const name = await ThermalPrinter.connectBluetooth();
+                saveSettings({ ...loadSettings(), printerName: name });
                 updatePrinterStatus();
-                showToast(`Conectado: ${result.name}`);
+                showToast(`Conectado: ${name}`);
             } catch (err) {
                 showToast(err.message, 'error');
             } finally {
@@ -1358,44 +1338,13 @@
             }
         });
 
-        window.addEventListener('thermal-printer-disconnected', () => {
-            updatePrinterStatus();
-            tryAutoReconnectPrinter({ silent: true });
-        });
-
         updatePrinterStatus();
-        tryAutoReconnectPrinter({ silent: true });
-    }
-
-    let reconnectingPrinter = false;
-
-    async function tryAutoReconnectPrinter({ silent = false } = {}) {
-        const settings = loadSettings();
-        if (settings.printerMode !== 'bluetooth') return;
-        if (!ThermalPrinter.isBluetoothSupported()) return;
-        if (ThermalPrinter.isConnected()) return;
-        if (!settings.printerDeviceId || reconnectingPrinter) return;
-
-        reconnectingPrinter = true;
-        try {
-            const ok = await ThermalPrinter.reconnectBluetooth(settings.printerDeviceId);
-            updatePrinterStatus();
-            if (ok && !silent) {
-                showToast(`Impresora reconectada: ${settings.printerName || 'Bluetooth'}`);
-            }
-        } catch (_) {
-            updatePrinterStatus();
-        } finally {
-            reconnectingPrinter = false;
-        }
     }
 
     function updatePrinterStatus() {
         const settings = loadSettings();
         if (ThermalPrinter.isConnected()) {
             els.printerStatus.textContent = 'Conectada: ' + (settings.printerName || 'Bluetooth');
-        } else if (settings.printerDeviceId) {
-            els.printerStatus.textContent = 'Desconectada — reconecta al actualizar o imprimir';
         } else if (settings.printerName) {
             els.printerStatus.textContent = 'Desconectada (vuelve a conectar)';
         } else {
