@@ -23,10 +23,54 @@ class Mailer
         ];
 
         if (self::shouldUseSmtp()) {
-            return self::sendViaSmtp($to, $subject, $mimeBody, $mimeHeaders, $fromEmail, $attachments, $body);
+            return array_merge(self::getStatus(), self::sendViaSmtp($to, $subject, $mimeBody, $mimeHeaders, $fromEmail, $attachments, $body));
         }
 
-        return self::sendViaMailFunction($to, $subject, $mimeBody, $mimeHeaders, $fromEmail, $attachments, $body);
+        if (!self::isMailConfigPresent()) {
+            $savedPath = self::saveFallback($attachments, $body, $subject);
+            return array_merge(self::getStatus(), [
+                'sent' => false,
+                'saved_path' => $savedPath,
+                'to' => $to,
+                'from' => $fromEmail,
+                'error' => 'Falta includes/mail.config.php. Copia mail.config.example.php y configura SMTP_PASS de Titan.',
+                'transport' => 'none',
+            ]);
+        }
+
+        if (defined('MAIL_DRIVER') && MAIL_DRIVER === 'smtp' && (!defined('SMTP_PASS') || SMTP_PASS === '')) {
+            $savedPath = self::saveFallback($attachments, $body, $subject);
+            return array_merge(self::getStatus(), [
+                'sent' => false,
+                'saved_path' => $savedPath,
+                'to' => $to,
+                'from' => $fromEmail,
+                'error' => 'SMTP_PASS vacío en mail.config.php.',
+                'transport' => 'none',
+            ]);
+        }
+
+        return array_merge(self::getStatus(), self::sendViaMailFunction($to, $subject, $mimeBody, $mimeHeaders, $fromEmail, $attachments, $body));
+    }
+
+    public static function getStatus(): array
+    {
+        return [
+            'mail_config_exists' => self::isMailConfigPresent(),
+            'smtp_ready' => self::shouldUseSmtp(),
+            'driver' => self::shouldUseSmtp() ? 'smtp' : (defined('MAIL_DRIVER') ? MAIL_DRIVER : 'mail'),
+            'smtp_host' => defined('SMTP_HOST') ? SMTP_HOST : null,
+            'smtp_port' => defined('SMTP_PORT') ? (int) SMTP_PORT : null,
+            'smtp_user' => defined('SMTP_USER') ? SMTP_USER : null,
+            'smtp_pass_set' => defined('SMTP_PASS') && SMTP_PASS !== '',
+            'notify_email' => defined('ORDER_NOTIFY_EMAIL') ? ORDER_NOTIFY_EMAIL : null,
+            'from_email' => defined('MAIL_FROM') ? MAIL_FROM : null,
+        ];
+    }
+
+    private static function isMailConfigPresent(): bool
+    {
+        return is_readable(__DIR__ . '/mail.config.php');
     }
 
     private static function shouldUseSmtp(): bool
@@ -56,6 +100,7 @@ class Mailer
         string $body
     ): array {
         try {
+            $fromEmail = SMTP_USER;
             $transport = new SmtpTransport(
                 SMTP_HOST,
                 defined('SMTP_PORT') ? (int) SMTP_PORT : 587,

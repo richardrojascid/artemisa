@@ -787,21 +787,25 @@
                 const methodLabels = { bluetooth: 'Bluetooth', browser: 'navegador', network: 'red' };
                 let toastMsg = `Comanda #${data.order.id} enviada e impresa (${methodLabels[printResult.method] || 'ok'})`;
                 if (data.email?.sent) {
-                    toastMsg += ' · Correo enviado';
+                    toastMsg += ' · Correo enviado (SMTP)';
                 } else if (data.email?.saved_path) {
-                    toastMsg += ' · Correo guardado en servidor (mail no disponible)';
+                    toastMsg += ' · Comanda guardada en servidor (correo no enviado)';
+                } else if (data.email?.error) {
+                    toastMsg += ' · Correo: ' + data.email.error;
                 } else if (data.email) {
                     toastMsg += ' · Correo no enviado';
                 }
-                showToast(toastMsg);
+                showToast(toastMsg, data.email?.sent ? 'success' : (data.email?.error ? 'error' : 'success'));
             } catch (printErr) {
                 let toastMsg = 'Pedido guardado. Impresión: ' + printErr.message;
                 if (data.email?.sent) {
-                    toastMsg += ' · Correo enviado';
+                    toastMsg += ' · Correo enviado (SMTP)';
                 } else if (data.email?.saved_path) {
-                    toastMsg += ' · Correo guardado en servidor (mail no disponible)';
+                    toastMsg += ' · Comanda guardada en servidor (correo no enviado)';
+                } else if (data.email?.error) {
+                    toastMsg += ' · Correo: ' + data.email.error;
                 } else if (data.email) {
-                    toastMsg += ' · Correo no enviado (configura MAIL_FROM en Hostgator)';
+                    toastMsg += ' · Correo no enviado';
                 }
                 showToast(toastMsg, data.email?.sent ? 'success' : 'error');
             }

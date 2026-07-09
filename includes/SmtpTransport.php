@@ -131,9 +131,15 @@ class SmtpTransport
             return;
         }
 
-        $this->command($socket, 'AUTH LOGIN', [334]);
-        $this->command($socket, base64_encode($this->username), [334]);
-        $this->command($socket, base64_encode($this->password), [235]);
+        try {
+            $this->command($socket, 'AUTH LOGIN', [334]);
+            $this->command($socket, base64_encode($this->username), [334]);
+            $this->command($socket, base64_encode($this->password), [235]);
+            return;
+        } catch (RuntimeException $loginError) {
+            $plain = base64_encode("\0{$this->username}\0{$this->password}");
+            $this->command($socket, 'AUTH PLAIN ' . $plain, [235]);
+        }
     }
 
     /**
