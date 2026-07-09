@@ -6,6 +6,13 @@ const ThermalPrinter = (() => {
     let bluetoothDevice = null;
     let bluetoothCharacteristic = null;
 
+    /** PT-210 y clones: buffer real ~20 bytes aunque BLE reporte MTU mayor. */
+    const BLE_CHUNK_MAX = 20;
+    const LINE_PAUSE_MS = 220;
+    const BLANK_LINE_EXTRA_MS = 120;
+    const CHUNK_DELAY_WITH_RESPONSE_MS = 140;
+    const CHUNK_DELAY_WITHOUT_RESPONSE_MS = 170;
+
     const PRINTER_SERVICE_UUIDS = [
         '000018f0-0000-1000-8000-00805f9b34fb',
         '49535343-fe7d-4ae0-88c5-f6b13c4f4b80',
@@ -88,30 +95,10 @@ const ThermalPrinter = (() => {
     }
 
     /**
-     * Impresoras BLE baratas (PT-210, GOOJPRT, etc.) tienen buffer muy pequeño (~20 bytes).
-     * Los chunks deben respetar secuencias ESC/POS y UTF-8 para no corromper el ticket.
+     * Nunca confiar en MTU alto del navegador: la PT-210 pierde datos con chunks > 20.
      */
-    function getBleChunkSize(characteristic) {
-        const PT210_SAFE = 20;
-        const prefersWriteWithResponse = !!characteristic.properties.write;
-
-        try {
-            if (prefersWriteWithResponse) {
-                const max = characteristic.getMaximumWriteValueLength(true);
-                if (max && max > 0) {
-                    return Math.min(Math.max(16, max), 64);
-                }
-            }
-            if (characteristic.properties.writeWithoutResponse) {
-                const max = characteristic.getMaximumWriteValueLength(false);
-                if (max && max > 0 && max <= 24) {
-                    return max;
-                }
-            }
-        } catch (_) {
-            /* navegador sin getMaximumWriteValueLength */
-        }
-        return PT210_SAFE;
+    function getBleChunkSize() {
+        return BLE_CHUNK_MAX;
     }
 
     function getUtf8CharLength(byte) {
@@ -133,10 +120,6 @@ const ThermalPrinter = (() => {
     function findSafeSplitEnd(bytes, start, maxLen) {
         const limit = Math.min(start + maxLen, bytes.length);
         if (limit >= bytes.length) return bytes.length;
-
-        for (let i = limit; i > start; i--) {
-            if (bytes[i - 1] === 0x0a) return i;
-        }
 
         let splitAt = limit;
 
@@ -190,14 +173,23 @@ const ThermalPrinter = (() => {
         return chunks;
     }
 
-    function getBleChunkDelay(chunkSize, useWithoutResponse) {
-        if (chunkSize <= 20) {
-            return useWithoutResponse ? 130 : 110;
+    function splitIntoLines(bytes) {
+        const lines = [];
+        let start = 0;
+        for (let i = 0; i < bytes.length; i++) {
+            if (bytes[i] === 0x0a) {
+                lines.push(bytes.slice(start, i + 1));
+                start = i + 1;
+            }
         }
-        if (chunkSize <= 64) {
-            return useWithoutResponse ? 90 : 75;
+        if (start < bytes.length) {
+            lines.push(bytes.slice(start));
         }
-        return useWithoutResponse ? 70 : 55;
+        return lines;
+    }
+
+    function isBlankLine(lineBytes) {
+        return lineBytes.length === 0 || (lineBytes.length === 1 && lineBytes[0] === 0x0a);
     }
 
     async function writeBleChunk(characteristic, chunk) {
@@ -212,6 +204,14 @@ const ThermalPrinter = (() => {
         throw new Error('La impresora no admite escritura Bluetooth.');
     }
 
+    async function sendLine(characteristic, lineBytes, chunkSize, chunkDelay) {
+        const chunks = buildBleChunks(lineBytes, chunkSize);
+        for (const chunk of chunks) {
+            await writeBleChunk(characteristic, chunk);
+            await delay(chunkDelay);
+        }
+    }
+
     async function sendEscPos(base64Data) {
         if (!bluetoothCharacteristic) {
             throw new Error('Impresora Bluetooth no conectada.');
@@ -224,18 +224,22 @@ const ThermalPrinter = (() => {
         }
 
         const characteristic = bluetoothCharacteristic;
-        const chunkSize = getBleChunkSize(characteristic);
+        const chunkSize = getBleChunkSize();
         const useWithoutResponse = !characteristic.properties.write
             && !!characteristic.properties.writeWithoutResponse;
-        const chunkDelay = getBleChunkDelay(chunkSize, useWithoutResponse);
-        const chunks = buildBleChunks(bytes, chunkSize);
+        const chunkDelay = useWithoutResponse
+            ? CHUNK_DELAY_WITHOUT_RESPONSE_MS
+            : CHUNK_DELAY_WITH_RESPONSE_MS;
 
-        for (const chunk of chunks) {
-            await writeBleChunk(characteristic, chunk);
-            await delay(chunkDelay);
+        const lines = splitIntoLines(bytes);
+
+        for (const line of lines) {
+            await sendLine(characteristic, line, chunkSize, chunkDelay);
+            const pause = isBlankLine(line) ? LINE_PAUSE_MS + BLANK_LINE_EXTRA_MS : LINE_PAUSE_MS;
+            await delay(pause);
         }
 
-        const tailDelay = Math.min(4000, 600 + chunks.length * 25);
+        const tailDelay = Math.min(6000, 800 + lines.length * 30);
         await delay(tailDelay);
     }
 
