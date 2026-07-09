@@ -87,6 +87,55 @@ const ThermalPrinter = (() => {
         return !!(bluetoothDevice?.gatt?.connected && bluetoothCharacteristic);
     }
 
+    /**
+     * Impresoras BLE baratas (PT-210, GOOJPRT, etc.) tienen buffer ~20 bytes.
+     * Enviar 512 bytes de una vez pierde el medio del ticket.
+     */
+    function getBleChunkSize(characteristic) {
+        const PT210_SAFE = 20;
+        try {
+            if (characteristic.properties.writeWithoutResponse) {
+                const max = characteristic.getMaximumWriteValueLength(false);
+                // PT-210 y clones: suelen reportar MTU alto pero solo procesan ~20 bytes
+                if (max && max > 0 && max <= 24) {
+                    return max;
+                }
+                return PT210_SAFE;
+            }
+            if (characteristic.properties.write) {
+                const max = characteristic.getMaximumWriteValueLength(true);
+                if (max && max > 0) {
+                    return Math.min(Math.max(20, max), 180);
+                }
+            }
+        } catch (_) {
+            /* navegador sin getMaximumWriteValueLength */
+        }
+        return PT210_SAFE;
+    }
+
+    function getBleChunkDelay(chunkSize, useWithoutResponse) {
+        if (chunkSize <= 20) {
+            return useWithoutResponse ? 90 : 70;
+        }
+        if (chunkSize <= 64) {
+            return useWithoutResponse ? 70 : 55;
+        }
+        return useWithoutResponse ? 55 : 40;
+    }
+
+    async function writeBleChunk(characteristic, chunk) {
+        if (characteristic.properties.writeWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(chunk);
+            return;
+        }
+        if (characteristic.properties.write) {
+            await characteristic.writeValue(chunk);
+            return;
+        }
+        throw new Error('La impresora no admite escritura Bluetooth.');
+    }
+
     async function sendEscPos(base64Data) {
         if (!bluetoothCharacteristic) {
             throw new Error('Impresora Bluetooth no conectada.');
@@ -98,16 +147,20 @@ const ThermalPrinter = (() => {
             bytes[i] = binary.charCodeAt(i);
         }
 
-        const chunkSize = 512;
+        const characteristic = bluetoothCharacteristic;
+        const chunkSize = getBleChunkSize(characteristic);
+        const useWithoutResponse = !!characteristic.properties.writeWithoutResponse;
+        const chunkDelay = getBleChunkDelay(chunkSize, useWithoutResponse);
+
         for (let i = 0; i < bytes.length; i += chunkSize) {
             const chunk = bytes.slice(i, i + chunkSize);
-            if (bluetoothCharacteristic.properties.writeWithoutResponse) {
-                await bluetoothCharacteristic.writeValueWithoutResponse(chunk);
-            } else {
-                await bluetoothCharacteristic.writeValue(chunk);
-            }
-            await delay(50);
+            await writeBleChunk(characteristic, chunk);
+            await delay(chunkDelay);
         }
+
+        // Esperar a que la impresora vacíe el buffer antes de terminar (evita cortes incompletos)
+        const tailDelay = Math.min(2500, 400 + Math.ceil(bytes.length / chunkSize) * 15);
+        await delay(tailDelay);
     }
 
     function delay(ms) {
