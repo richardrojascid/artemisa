@@ -5,8 +5,8 @@ class EscPosPrinter
 {
     private const ESC = "\x1b";
     private const GS = "\x1d";
-    /** Ancho imprimible PT-210 58mm (U24): ~32 caracteres. */
-    private const LINE_WIDTH = 32;
+    /** Ancho PT-210 58mm: 28 columnas (equilibrio margen/velocidad). */
+    private const LINE_WIDTH = 28;
 
     public static function buildReceipt(array $order, array $items, string $cafeName = 'CAFÉ COMANDA'): string
     {
