@@ -88,24 +88,24 @@ const ThermalPrinter = (() => {
     }
 
     /**
-     * Impresoras BLE baratas (PT-210, GOOJPRT, etc.) tienen buffer ~20 bytes.
-     * Enviar 512 bytes de una vez pierde el medio del ticket.
+     * Impresoras BLE baratas (PT-210, GOOJPRT, etc.) tienen buffer muy pequeño (~20 bytes).
+     * Los chunks deben respetar secuencias ESC/POS y UTF-8 para no corromper el ticket.
      */
     function getBleChunkSize(characteristic) {
         const PT210_SAFE = 20;
+        const prefersWriteWithResponse = !!characteristic.properties.write;
+
         try {
-            if (characteristic.properties.writeWithoutResponse) {
-                const max = characteristic.getMaximumWriteValueLength(false);
-                // PT-210 y clones: suelen reportar MTU alto pero solo procesan ~20 bytes
-                if (max && max > 0 && max <= 24) {
-                    return max;
-                }
-                return PT210_SAFE;
-            }
-            if (characteristic.properties.write) {
+            if (prefersWriteWithResponse) {
                 const max = characteristic.getMaximumWriteValueLength(true);
                 if (max && max > 0) {
-                    return Math.min(Math.max(20, max), 180);
+                    return Math.min(Math.max(16, max), 64);
+                }
+            }
+            if (characteristic.properties.writeWithoutResponse) {
+                const max = characteristic.getMaximumWriteValueLength(false);
+                if (max && max > 0 && max <= 24) {
+                    return max;
                 }
             }
         } catch (_) {
@@ -114,23 +114,99 @@ const ThermalPrinter = (() => {
         return PT210_SAFE;
     }
 
+    function getUtf8CharLength(byte) {
+        if ((byte & 0x80) === 0) return 1;
+        if ((byte & 0xe0) === 0xc0) return 2;
+        if ((byte & 0xf0) === 0xe0) return 3;
+        if ((byte & 0xf8) === 0xf0) return 4;
+        return 1;
+    }
+
+    function getEscPosCommandLength(bytes, pos) {
+        const b0 = bytes[pos];
+        if (b0 !== 0x1b && b0 !== 0x1d) return 1;
+        if (pos + 2 < bytes.length) return 3;
+        if (pos + 1 < bytes.length) return 2;
+        return 1;
+    }
+
+    function findSafeSplitEnd(bytes, start, maxLen) {
+        const limit = Math.min(start + maxLen, bytes.length);
+        if (limit >= bytes.length) return bytes.length;
+
+        for (let i = limit; i > start; i--) {
+            if (bytes[i - 1] === 0x0a) return i;
+        }
+
+        let splitAt = limit;
+
+        while (splitAt > start && (bytes[splitAt - 1] & 0xc0) === 0x80) {
+            splitAt--;
+        }
+
+        let i = start;
+        while (i < splitAt) {
+            if (bytes[i] === 0x1b || bytes[i] === 0x1d) {
+                const cmdLen = getEscPosCommandLength(bytes, i);
+                if (i + cmdLen > splitAt) {
+                    splitAt = i;
+                    break;
+                }
+                i += cmdLen;
+                continue;
+            }
+            if ((bytes[i] & 0x80) !== 0) {
+                const utfLen = getUtf8CharLength(bytes[i]);
+                if (i + utfLen > splitAt) {
+                    splitAt = i;
+                    break;
+                }
+                i += utfLen;
+                continue;
+            }
+            i++;
+        }
+
+        if (splitAt <= start) {
+            splitAt = limit;
+            while (splitAt > start && (bytes[splitAt - 1] & 0xc0) === 0x80) {
+                splitAt--;
+            }
+            if (splitAt <= start) splitAt = limit;
+        }
+
+        return splitAt;
+    }
+
+    function buildBleChunks(bytes, maxChunkSize) {
+        const chunks = [];
+        let pos = 0;
+        while (pos < bytes.length) {
+            const end = findSafeSplitEnd(bytes, pos, maxChunkSize);
+            const next = end > pos ? end : Math.min(pos + maxChunkSize, bytes.length);
+            chunks.push(bytes.slice(pos, next));
+            pos = next;
+        }
+        return chunks;
+    }
+
     function getBleChunkDelay(chunkSize, useWithoutResponse) {
         if (chunkSize <= 20) {
-            return useWithoutResponse ? 90 : 70;
+            return useWithoutResponse ? 130 : 110;
         }
         if (chunkSize <= 64) {
-            return useWithoutResponse ? 70 : 55;
+            return useWithoutResponse ? 90 : 75;
         }
-        return useWithoutResponse ? 55 : 40;
+        return useWithoutResponse ? 70 : 55;
     }
 
     async function writeBleChunk(characteristic, chunk) {
-        if (characteristic.properties.writeWithoutResponse) {
-            await characteristic.writeValueWithoutResponse(chunk);
-            return;
-        }
         if (characteristic.properties.write) {
             await characteristic.writeValue(chunk);
+            return;
+        }
+        if (characteristic.properties.writeWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(chunk);
             return;
         }
         throw new Error('La impresora no admite escritura Bluetooth.');
@@ -149,17 +225,17 @@ const ThermalPrinter = (() => {
 
         const characteristic = bluetoothCharacteristic;
         const chunkSize = getBleChunkSize(characteristic);
-        const useWithoutResponse = !!characteristic.properties.writeWithoutResponse;
+        const useWithoutResponse = !characteristic.properties.write
+            && !!characteristic.properties.writeWithoutResponse;
         const chunkDelay = getBleChunkDelay(chunkSize, useWithoutResponse);
+        const chunks = buildBleChunks(bytes, chunkSize);
 
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.slice(i, i + chunkSize);
+        for (const chunk of chunks) {
             await writeBleChunk(characteristic, chunk);
             await delay(chunkDelay);
         }
 
-        // Esperar a que la impresora vacíe el buffer antes de terminar (evita cortes incompletos)
-        const tailDelay = Math.min(2500, 400 + Math.ceil(bytes.length / chunkSize) * 15);
+        const tailDelay = Math.min(4000, 600 + chunks.length * 25);
         await delay(tailDelay);
     }
 
